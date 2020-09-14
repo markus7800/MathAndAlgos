@@ -33,7 +33,7 @@ end
 
 norm(inv(eigen_vectors(5)) * diff_eq_matrix(5) * eigen_vectors(5) - Diagonal(eigen_values(5)))
 
-function plot_mice(n::Int, T::Float64, cs::Vector=vcat(1., fill(0., n-1)))
+function plot_mice(n::Int, T::Float64, cs::Vector{ComplexF64}=vcat(1. + 0im, fill(0im, n-1)))
     n_steps = 500
     ts = LinRange(0, T, n_steps)
     traj = zeros(ComplexF64, n, n_steps)
@@ -62,6 +62,9 @@ function plot_mice(n::Int, T::Float64, cs::Vector=vcat(1., fill(0., n-1)))
 
     scatter!(ps, mc=:red)
     quiver!(ps, quiver=(real.(∇ps), imag.(∇ps)), lc=:black)
+
+    midpoint = cs[n]
+    scatter!([midpoint], markershape=:x, mc=:black)
     return p
 end
 
@@ -73,7 +76,7 @@ function calculate_coeffs(x0::Vector{ComplexF64})
 end
 
 
-function anim_mice(n::Int, cs::Vector=vcat(1., fill(0., n-1)); t1=5, frames=100)
+function anim_mice(n::Int, cs::Vector{ComplexF64}=vcat(1. + 0im, fill(0im, n-1)); t1=5, frames=100)
     anim = Animation()
     ts = LinRange(0, t1, frames)
 
@@ -88,13 +91,13 @@ end
 
 plot_mice(3, 1.)
 
-anim = anim_mice(11, t1=10., frames=300)
-gif(anim, "temp.gif")
+anim = anim_mice(9, t1=10., frames=300)
+gif(anim, "9equilat.gif")
 
 n = 9
 Random.seed!(1)
 x0 = rand(ComplexF64, n)
 scatter(x0)
 cs = calculate_coeffs(x0)
-anim = anim_mice(n, cs, t1=5., frames=200)
-gif(anim, "temp.gif")
+anim = anim_mice(n, cs, t1=10., frames=300)
+gif(anim, "9random.gif")
