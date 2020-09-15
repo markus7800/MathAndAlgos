@@ -101,3 +101,6 @@ scatter(x0)
 cs = calculate_coeffs(x0)
 anim = anim_mice(n, cs, t1=10., frames=300)
 gif(anim, "9random.gif")
+
+cs[n]
+sum(x0)/n
