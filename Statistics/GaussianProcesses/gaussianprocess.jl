@@ -34,6 +34,7 @@ function make_posdef!(K::AbstractMatrix; chances=10)
     throw(ArgumentError("K is not positive definite."))
 end
 
+# TODO n dim
 function sample_GP_1D(gp::GP, xs::AbstractMatrix{Float64}, n_sample=1)
     d, N = size(xs)
     μ = mean(gp.mean, xs) # 1 × N
