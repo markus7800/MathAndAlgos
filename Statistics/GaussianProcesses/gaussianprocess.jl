@@ -40,10 +40,44 @@ function sample_GP_1D(gp::GP, xs::AbstractMatrix{Float64}, n_sample=1)
     K = cov(gp.kernel, xs, xs)
     make_posdef!(K)
 
-    Σ = cholesky(K).U
     Z = randn(N, n_sample)
-    return μ' .+ Σ'Z
+    UW = unwhiten(K, Z)
+
+    return μ' .+ UW
 end
+
+#=
+ if Z is a standardnormal col vector (X_1, ..., X_N)^T ∼ N(0,I)
+ then U^T * Z ∼ N(0,Σ)
+ where U^T * U = Σ
+=#
+function unwhiten(Σ::AbstractMatrix, Z::AbstractMatrix)
+    U = cholesky(Σ).U
+    return U'Z
+end
+
+#=
+ if Z is a standardnormal col vector (X_1, ..., X_N)^T ∼ N(0,Σ)
+ then U^T * Z ∼ N(0,I)
+ where U^T * U = Σ
+=#
+
+function unwhiten(Σ::AbstractMatrix, Z::AbstractMatrix)
+    U = cholesky(Σ).U
+    return U'Z
+end
+
+#=
+ if Z is a gaussian col vector (X_1, ..., X_N)^T ∼ N(0,Σ)
+ then Y = U^T \ Z ∼ N(0,I)
+ where U^T * U = Σ
+ (U^T * Y = Z)
+=#
+function whiten(Σ::AbstractMatrix, Z::AbstractMatrix)
+    U = cholesky(Σ).U
+    return U' \ Z
+end
+
 
 # 1 dimensional case
 sample_GP(gp::GP, xs::AbstractVector{Float64}, n_sample=1) = sample_GP_1D(gp, xs', n_sample)
@@ -55,7 +89,7 @@ function plot_GP_1D(gp::GP, xs::AbstractVector; q=0.95)
     plot(xs, μs, ribbon=σs, fillalpha=0.25, lw=3, legend=false)
 end
 
-function posterior(gp::GP, xtrain::AbstractMatrix{Float64}, ytrain::AbstractMatrix{Float64}; σ=0.)
+function posterior_naive(gp::GP, xtrain::AbstractMatrix{Float64}, ytrain::AbstractMatrix{Float64}; σ=0.)
     d, n = size(xtrain)
     K = cov(gp.kernel, xtrain, xtrain) # n × n
     A = inv(K + σ^2*I(n)) # n × n
@@ -84,12 +118,12 @@ end
 # 1D
 posterior(gp::GP, xtrain::AbstractVector{Float64}, ytrain::AbstractVector{Float64}; σ=0.) = posterior(gp, xtrain', ytrain', σ=σ)
 
-function predict(gp::GP, xpred::AbstractMatrix{Float64}, xtrain::AbstractMatrix{Float64}, ytrain::AbstractMatrix{Float64}; σ=0.)
+function predict_naive(gp::GP, xpred::AbstractMatrix{Float64}, xtrain::AbstractMatrix{Float64}, ytrain::AbstractMatrix{Float64}; σ=0.)
     d, n = size(xtrain)
     d, N = size(xpred)
 
     K = cov(gp.kernel, xtrain, xtrain) # n × n
-    A = inv(K + σ^2*I(n)) # n × n
+    A = inv(K + σ^2*I(n)) # n × n <- INVERSION IS SILLY
     v = A * (ytrain .- mean(gp.mean, xtrain))' # n × d
     K12 = cov(gp.kernel,xtrain,xpred) # n × N
 
@@ -101,8 +135,59 @@ function predict(gp::GP, xpred::AbstractMatrix{Float64}, xtrain::AbstractMatrix{
     return μ, Σ
 end
 
-predict(gp::GP, xpred::AbstractVector{Float64}, xtrain::AbstractVector{Float64}, ytrain::AbstractVector{Float64}; kw...) =
-    predict(gp, xpred', xtrain', ytrain', kw...)
+function posterior(gp::GP, xtrain::AbstractMatrix{Float64}, ytrain::AbstractMatrix{Float64}; σ=0.)
+    d, n = size(xtrain)
+    Ktrain = cov(gp.kernel, xtrain, xtrain) + σ^2*I(n) # n × n
+    v = Ktrain \ (ytrain .- mean(gp.mean, xtrain))' # n × d
+
+    function m_new(x::AbstractVector{Float64}) # x ∈ ℜ^d
+        Kcross = cov(gp.kernel,xtrain,x) # n × 1
+
+        #     (1 × d) + (1 × n) * (n × d)
+        val = mean(gp.mean, x)' .+ Kcross'v
+        return vec(val)
+    end
+    function k_new(x::AbstractVector{Float64}, x´::AbstractVector{Float64}) # x, x´ ∈ ℜ^d
+        xpred = Matrix{Float64}(undef, length(x), 2)
+        xpred[:,1] .= x; xpred[:,2] .= x´
+
+        Kcross = cov(gp.kernel,xtrain,xpred) # n × N
+        Kpred = cov(gp.kernel,xpred,xpred)
+
+        L = whiten(Ktrain, Kcross)
+        K = Kpred .- L'L # see predict
+
+        return K[1,2]
+    end
+
+    return GP(FunctionMean(m_new), FunctionKernel(k_new))
+end
+
+function predict(gp::GP, xpred::AbstractMatrix{Float64}, xtrain::AbstractMatrix{Float64}, ytrain::AbstractMatrix{Float64}; σ=0.)
+    d, n = size(xtrain)
+    d, N = size(xpred)
+
+    Ktrain = cov(gp.kernel, xtrain, xtrain) + σ^2*I(n) # n × n
+    Kcross = cov(gp.kernel,xtrain,xpred) # n × N
+    Kpred = cov(gp.kernel,xpred,xpred)
+
+    v = Ktrain \ (ytrain .- mean(gp.mean, xtrain))' # n × d
+
+    L = whiten(Ktrain, Kcross) # U^T L = Kcross where U^T U = Ktrain
+
+    #           (N × d)         +  (N × n) * (n × d)
+    μ = mean(gp.mean, xpred)' + Kcross'v
+
+    # L = (U^-1)^T Kcross
+    # L^T L = Kcross^T (U^-1) (U^-1)^T Kcross = Kcross^T Ktrain^-1 Kcross
+    # since  Ktrain (U^-1) (U^-1)^T = U^T U (U^-1) (U^-1)^T = I
+    Σ = Kpred - L'L
+
+    return μ, Σ
+end
+
+predict(gp::GP, xpred::AbstractVector{Float64}, xtrain::AbstractVector{Float64}, ytrain::AbstractVector{Float64}; σ=0.) =
+    predict(gp, xpred', xtrain', ytrain', σ=σ)
 
 function plot_predict_1D(gp::GP, xs::AbstractVector{Float64}, xtrain::AbstractVector{Float64}, ytrain::AbstractVector{Float64};
             σ=0., q=0.95, obsv=true)
@@ -118,6 +203,7 @@ end
 
 
 gp = GP(FunctionMean(x -> -x), SE(1.,1.))
+gp = GP(MeanZero(), SE(1.,1.))
 
 xs = LinRange(-3,3,100)
 
@@ -128,11 +214,10 @@ fs = sample_GP_1D(gp, xs', 10)
 plot!(xs, fs, legend=false)
 
 xtrain = [-1., 0., 1.]
-ytrain = [1., 2., 3.]
-gp_pos = posterior(gp, xtrain, ytrain)
+ytrain = [1., 2., 1.5]
+gp_pos = posterior(gp, xtrain, ytrain, σ=.0)
 
 plot_GP_1D(gp_pos, xs)
 scatter!(xtrain, ytrain)
-
-predict(gp, xs, xtrain, ytrain)
-plot_predict_1D(gp, xs, xtrain, ytrain)
+fs = sample_GP_1D(gp_pos, xs', 10)
+plot!(xs, fs, legend=false)

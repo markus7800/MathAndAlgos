@@ -47,7 +47,7 @@ function _cov(se::SE, x::Vector{Float64}, x´::Vector{Float64})
 end
 
 function _cov(se::SE, r::Float64)
-    return se.c * exp(-0.5 * r / se.l)
+    return se.c^2 * exp(-0.5 * r / se.l^2)
 end
 
 
