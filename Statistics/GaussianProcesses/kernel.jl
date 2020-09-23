@@ -2,17 +2,36 @@ using LinearAlgebra
 
 abstract type Kernel end
 
+function cov(k::Kernel, xs::AbstractMatrix{Float64}, xs´::AbstractMatrix{Float64})
+    l = size(xs,2)
+    l´ = size(xs´,2)
+    K = zeros(l, l´)
+    for i in 1:l, j in 1:l´
+        K[i,j] = _cov(k, xs[:,i], xs´[:,j])
+        # K[j,i]
+    end
+    return K
+end
+
+# point ∈ ℜ^d evaluations
+cov(k::Kernel, xs::AbstractVector{Float64}, xs´::AbstractVector{Float64}) = cov(k, reshape(xs, :, 1), reshape(xs´, :, 1))
+cov(k::Kernel, xs::AbstractVector{Float64}, xs´::AbstractMatrix{Float64}) = cov(k, reshape(xs, :, 1), xs´)
+cov(k::Kernel, xs::AbstractMatrix{Float64}, xs´::AbstractVector{Float64}) = cov(k, xs, reshape(xs´, :, 1))
+
+# point ∈ ℜ evaluations
+cov(k::Kernel, x::Float64, x´::Float64) = cov(k, [x], [x´])
+cov(k::Kernel, x::Float64, xs´::AbstractMatrix{Float64}) = cov(k, [x], xs´)
+cov(k::Kernel, xs::AbstractMatrix{Float64}, x´::Float64) = cov(k, xs, [x´])
+
+
 struct FunctionKernel <: Kernel
     k::Function # inputs are vectors
 end
 
-function cov(fk::FunctionKernel, x::Vector{Float64}, x´::Vector{Float64})
+function _cov(fk::FunctionKernel, x::Vector{Float64}, x´::Vector{Float64})
     return fk.k(x,x´)
 end
 
-function cov(fk::FunctionKernel, x::Float64, x´::Float64)
-    return fk.k([x],[x´])
-end
 
 # Squared Exponential
 struct SE <: Kernel
@@ -21,27 +40,13 @@ struct SE <: Kernel
 end
 
 
-function cov(k::Kernel, xs::AbstractMatrix{Float64}, xs´::AbstractMatrix{Float64})
-    l = size(xs,2)
-    l´ = size(xs´,2)
-    K = zeros(l, l´)
-    for i in 1:l, j in 1:l´
-        K[i,j] = cov(k, xs[:,i], xs´[:,j])
-        # K[j,i]
-    end
-    return K
-end
 
-function cov(se::SE, x::Vector{Float64}, x´::Vector{Float64})
+function _cov(se::SE, x::Vector{Float64}, x´::Vector{Float64})
     d = x - x´
-    return cov(se, d'd)
+    return _cov(se, d'd)
 end
 
-function cov(se::SE, x::Float64, x´::Float64)
-    return cov(se, (x - x´)^2)
-end
-
-function cov(se::SE, r::Float64)
+function _cov(se::SE, r::Float64)
     return se.c * exp(-0.5 * r / se.l)
 end
 

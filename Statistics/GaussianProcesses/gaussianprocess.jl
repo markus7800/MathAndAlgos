@@ -1,9 +1,12 @@
 using Plots
 using Distributions
+using Random
 include("kernel.jl")
+include("mean.jl")
+
 
 mutable struct GP
-    mean::Function
+    mean::Mean
     kernel::Kernel
 end
 
@@ -14,15 +17,6 @@ end
  and N is the number of observations.
 =#
 
-# apply columnwise
-function mean(m::Function, xs::AbstractMatrix)
-    d, N = size(xs)
-    μ = Array{Float64}(undef, d, N)
-    for i in 1:N
-        μ[:,i] .= m(xs[:,i])
-    end
-    return μ
-end
 
 function make_posdef!(K::AbstractMatrix; chances=10)
     if isposdef(K)
@@ -55,9 +49,9 @@ end
 sample_GP(gp::GP, xs::AbstractVector{Float64}, n_sample=1) = sample_GP_1D(gp, xs', n_sample)
 
 function plot_GP_1D(gp::GP, xs::AbstractVector; q=0.95)
-    μs = map(x -> gp.mean(x)[1], xs)
+    μs = map(x -> mean(gp.mean, x)[1], xs)
     s = quantile(Normal(), (q+1)/2)
-    σs = map(x -> s*sqrt(cov(gp.kernel,x,x)), xs)
+    σs = map(x -> s*sqrt(cov(gp.kernel,x,x)[1]), xs)
     plot(xs, μs, ribbon=σs, fillalpha=0.25, lw=3, legend=false)
 end
 
@@ -66,31 +60,25 @@ function posterior(gp::GP, xtrain::AbstractMatrix{Float64}, ytrain::AbstractMatr
     K = cov(gp.kernel, xtrain, xtrain) # n × n
     A = inv(K + σ^2*I(n)) # n × n
     v = A * (ytrain .- mean(gp.mean, xtrain))' # n × d
-    function m_new(x)
+    function m_new(x::AbstractVector{Float64}) # x ∈ ℜ^d
         X = Array{Float64}(undef, length(x), 1)
         X[:,1] .= x # d × 1
 
         #     (1 × d) + (1 × n) * (n × d)
-        val = mean(gp.mean, X)' .+ cov(gp.kernel,X,xtrain)*v
+        val = mean(gp.mean, x)' .+ cov(gp.kernel,x,xtrain)*v
         return vec(val)
     end
-    function k_new(x, x´)
-        X = Array{Float64}(undef, length(x), 1)
-        X[:,1] .= x # d × 1
-
-        X´ = Array{Float64}(undef, length(x´), 1)
-        X´[:,1] .= x´ # d × 1
-
-        L = cov(gp.kernel,X,xtrain) # 1 × n
-        R = cov(gp.kernel,xtrain,X´) # n × 1
-        val = cov(gp.kernel, X, X´) # 1 × 1
+    function k_new(x::AbstractVector{Float64}, x´::AbstractVector{Float64}) # x, x´ ∈ ℜ^d
+        L = cov(gp.kernel,x,xtrain) # 1 × n
+        R = cov(gp.kernel,xtrain,x´) # n × 1
+        val = cov(gp.kernel, x, x´) # 1 × 1
 
         #     (1 × n) * (n × n) * (n × 1)
         val .-= (L*A*R)
         return val[1]
     end
 
-    return GP(m_new, FunctionKernel(k_new))
+    return GP(FunctionMean(m_new), FunctionKernel(k_new))
 end
 
 # 1D
@@ -116,18 +104,20 @@ end
 predict(gp::GP, xpred::AbstractVector{Float64}, xtrain::AbstractVector{Float64}, ytrain::AbstractVector{Float64}; kw...) =
     predict(gp, xpred', xtrain', ytrain', kw...)
 
-function plot_predict_1D(gp::GP, xs::AbstractVector{Float64}, xtrain::AbstractVector{Float64}, ytrain::AbstractVector{Float64}; σ=0., q=0.95)
+function plot_predict_1D(gp::GP, xs::AbstractVector{Float64}, xtrain::AbstractVector{Float64}, ytrain::AbstractVector{Float64};
+            σ=0., q=0.95, obsv=true)
+
     n = length(xs)
     μ, Σ = predict(gp, xs', xtrain', ytrain', σ=σ)
     μs = vec(μ)
     s = quantile(Normal(), (q+1)/2)
     σs = map(i -> s*sqrt(Σ[i,i]), 1:n)
     plot(xs, μs, ribbon=σs, fillalpha=0.25, lw=3, legend=false)
+    obsv && scatter!(xtrain, ytrain)
 end
 
 
-using Random
-gp = GP(x -> -x, SE(1.,1.))
+gp = GP(FunctionMean(x -> -x), SE(1.,1.))
 
 xs = LinRange(-3,3,100)
 
@@ -135,7 +125,6 @@ plot_GP_1D(gp, xs)
 
 Random.seed!(1)
 fs = sample_GP_1D(gp, xs', 10)
-
 plot!(xs, fs, legend=false)
 
 xtrain = [-1., 0., 1.]
