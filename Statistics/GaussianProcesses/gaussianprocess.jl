@@ -206,19 +206,23 @@ end
 gp = GP(FunctionMean(x -> -x), SE(1.,1.))
 gp = GP(MeanZero(), SE(1.,1.))
 
-xs = LinRange(-3,3,100)
+xs = LinRange(-4,4,100)
 
 plot_GP_1D(gp, xs)
+savefig("posterior_sample.svg")
 
 Random.seed!(1)
 fs = sample_GP_1D(gp, xs', 10)
 plot!(xs, fs, legend=false)
 
-xtrain = [-1., 0., 1.]
-ytrain = [1., 2., 1.5]
+xtrain = [-2., -1., 0., 1., 2.]
+ytrain = [0.5, 1., 2., 1.5, 2.]
 gp_pos = posterior(gp, xtrain, ytrain, σ=.0)
 
 plot_GP_1D(gp_pos, xs)
 scatter!(xtrain, ytrain)
+Random.seed!(1)
 fs = sample_GP_1D(gp_pos, xs', 10)
 plot!(xs, fs, legend=false)
+
+plot_predict_1D(gp, xs, xtrain, ytrain)

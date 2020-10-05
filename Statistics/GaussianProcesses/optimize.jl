@@ -38,6 +38,7 @@ function optimize_params_1D(se::SE, xtrain::AbstractVector{Float64},
         x0 = [se.c, se.l, 0.]
         res = optimize(F2, x0, NelderMead(), Optim.Options(iterations=10^5))
         display(res)
+        println(res.minimizer)
         c, l, m  = res.minimizer
         return FunctionMean(x -> m), SE(c, l)
     elseif mean == :affine
