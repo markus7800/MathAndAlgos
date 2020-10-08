@@ -1,5 +1,7 @@
 using Random
 using Plots
+include("svm.jl")
+
 
 N = 250
 
@@ -16,6 +18,8 @@ scatter(xs, ys, mc=classification(xs,ys), legend=false)
 rs = sqrt.(xs.^2 + ys.^2)
 
 scatter(xs, ys, rs, mc=classification(xs,ys), camera=(45,65))
+
+
 
 dist(x,y) = sqrt(x^2 + y^2)
 surface(LinRange(-3,2,100),LinRange(-3,2,100),dist)
@@ -34,9 +38,71 @@ pred == y
 scatter(xs, ys, mc=classification(xs,ys), legend=false)
 scatter(xs, ys, mc=pred, legend=false)
 
-β0, β = naive_svm(X, y)
 
+β0, β = naive_svm(X, y)
 pred = svm_predict(β0, β, X)
 pred == y
 
-svm(X, y)
+
+β0, β = svm_coordinate_descent(X, y, 250)
+pred = svm_predict(β0, β, X)
+pred == y
+sum(pred .== y)
+
+
+β0, β = svm(X, y)
+pred = svm_predict(β0, β, X)
+pred == y
+
+
+
+X = Matrix(hcat(xs, ys)')
+y = classification(xs, ys)
+
+
+β0, β = svm(X, y)
+pred = svm_predict(β0, β, X)
+pred == y
+sum(pred .== y) / length(y)
+
+
+
+rs = sqrt.(xs.^2 + ys.^2)
+X_aug = Matrix(hcat(xs, ys, rs)')
+
+β0, β, α = svm(X_aug, y)
+pred = svm_predict(β0, β, X_aug)
+pred == y
+sum(pred .== y) / length(y)
+
+function kernel(u,v)
+    return u[1]*v[1] + u[2]*v[2] + √(u[1]^2+u[2]^2)*√(v[1]^2+v[2]^2)
+end
+
+(X_aug[:,1])'X_aug[:,2]
+kernel(X[:,1], X[:,2])
+
+β01, β1, α1 = svm(X, y, kernel)
+sum(α .- α1)
+
+pred = svm_predict(α1, X, y, kernel, X)
+
+pred == y
+sum(pred .== y) / length(y)
+
+
+using BenchmarkTools
+@btime pred = svm_predict(α1, X, y, kernel, X, fast=true) # 413.633 μs
+@btime pred = svm_predict(α1, X, y, kernel, X, fast=false) # 61.605 ms
+
+N = 50
+lin = LinRange(-3,2,N)
+grid = zeros(3, N^2)
+for (i,(x,y)) in enumerate(Iterators.product(lin, lin))
+    grid[:,i] = [x,y, sqrt(x^2+y^2)]
+end
+@time grid_pred = svm_predict(β0, β, grid)
+
+scatter(grid[1,:],grid[2,:],mc=Int.(grid_pred), legend=false)
+scatter!(grid[1,:],grid[2,:],grid[3,:],
+    mc=Int.(grid_pred), legend=false, camera=(75,65))
