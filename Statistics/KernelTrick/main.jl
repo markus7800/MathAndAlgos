@@ -3,21 +3,28 @@ using Plots
 include("svm.jl")
 
 
-N = 250
+N = 500
 
 Random.seed!(1)
 xs, ys = rand(N) * 5 .- 3, rand(N) * 5 .- 3
 
-function classification(xs, ys)
+function classification(xs, ys, color=false)
     rs = sqrt.(xs.^2 .+ ys.^2)
-    return (xs .+ ys .+ 2rs .> 2) * 2 .- 1
+    class = (xs .+ ys .+ 2rs .> 2)
+    if color
+        class .+ 1
+    else
+        class .* 2 .- 1
+    end
 end
 
-scatter(xs, ys, mc=classification(xs,ys), legend=false)
+scatter(xs, ys, mc=classification(xs,ys, true), legend=false)
+savefig("svm_2d.svg")
 
 rs = sqrt.(xs.^2 + ys.^2)
 
-scatter(xs, ys, rs, mc=classification(xs,ys), camera=(45,65))
+scatter(xs, ys, rs, mc=classification(xs,ys,true), camera=(75,65), legend=false)
+savefig("svm_3d_1.svg")
 
 
 
@@ -104,5 +111,7 @@ end
 @time grid_pred = svm_predict(β0, β, grid)
 
 scatter(grid[1,:],grid[2,:],mc=Int.(grid_pred), legend=false)
-scatter!(grid[1,:],grid[2,:],grid[3,:],
-    mc=Int.(grid_pred), legend=false, camera=(75,65))
+scatter(grid[1,:],grid[2,:],grid[3,:],
+    mc=Int.((grid_pred.+ 1) ./2 .+1), legend=false, camera=(75,65))
+
+savefig("svm_3d.svg")

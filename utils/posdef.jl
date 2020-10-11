@@ -1,3 +1,5 @@
+using LinearAlgebra
+
 function make_posdef!(K::AbstractMatrix; chances=10)
     if isposdef(K)
         return

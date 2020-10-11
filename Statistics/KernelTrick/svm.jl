@@ -1,5 +1,6 @@
 using Optim
 include("../../utils/posdef.jl")
+using CVXOPT
 
 function svm_predict(β0, β, X)
     y = sign.(β0 .+ X'β)
