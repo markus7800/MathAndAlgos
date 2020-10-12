@@ -82,6 +82,11 @@ pred = svm_predict(β0, β, X_aug)
 pred == y
 sum(pred .== y) / length(y)
 
+sv_is = findall(α .> 1e-3)
+svs = X_aug[:, sv_is]
+β0s = vec(-β'svs)
+
+
 function kernel(u,v)
     return u[1]*v[1] + u[2]*v[2] + √(u[1]^2+u[2]^2)*√(v[1]^2+v[2]^2)
 end
