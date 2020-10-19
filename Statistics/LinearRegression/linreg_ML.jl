@@ -45,12 +45,14 @@ function predict(lm::LM_ML, X_pred::Matrix)
 end
 
 
-function lm_ML(lm::LM_ML, X_pred::Vector)
-    predict(lm, reshape(X,:,1))
+function predict(lm::LM_ML, X_pred::Vector)
+    predict(lm, reshape(X_pred,:,1))
 end
 
-function plot_lm(lm::LM_ML)
+function plot_lm(lm::LM_ML; kw...)
     @assert size(lm.X,2) == 1
-    scatter(vec(lm.X), lm.y, label="data")
-    plot!(t->lm.w[1] + lm.w[2]*t, label="maximum likelihood line")
+    x_vec = vec(lm.X)
+    scatter(x_vec, lm.y, label="data"; kw...)
+    ts = collect(LinRange(minimum(x_vec), maximum(x_vec), 500))
+    plot!(ts, predict(lm, ts), label="maximum likelihood prediction")
 end
