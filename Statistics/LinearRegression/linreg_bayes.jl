@@ -26,7 +26,7 @@ struct LM_Bayes
             S_inv = α*I(d) + β*Phi'Phi
             make_posdef!(S_inv)
             U = inv(cholesky(S_inv).U)
-            S = U*U' #inv(S_inv)
+            S = U*U' # inv(S_inv)
             make_posdef!(S)
             b = Phi'y
             m = β*S*b

@@ -13,6 +13,7 @@ y = -1.2 .+ 2.3 * X .+ randn(N)/β
 lm_ml = LM_ML(X, y)
 plot_lm(lm_ml)
 plot!(t-> -1.2 + 2.3*t, label="true", legend=:topleft)
+summary_stats(lm_ml)
 
 lm_bayes = LM_Bayes(X, y, α=0.1, β=β)
 p = plot_lm(lm_bayes)
@@ -75,3 +76,48 @@ for i in 1:size(ws, 2)
 end
 display(p)
 scatter!(X,y, mc=2, label="data", ms=2)
+
+
+Random.seed!(1)
+
+function monom_basis(x_vec)
+    x = x_vec[1]
+    [x^j for j in 0:24]
+end
+
+function plot_bias_var(λ)
+    ts = collect(LinRange(0,1,500))
+    ys = zeros(500)
+
+    β = 1.
+    N = 25
+    X = collect(LinRange(0,1,N))
+
+    p = plot()
+    for i in 1:100
+        y = sin.(2*π*X) .+ randn(N)/β
+        lm_ml = LM_ML(X, y, basis=monom_basis, λ=λ)
+        ys´ = predict(lm_ml, ts)
+        ys += ys´/100
+        if i % 5 == 0
+            plot!(ts, ys´, label="", lc=1)
+        end
+    end
+    plot!(ts, ys, label="average", lc=:black, lw=2)
+
+    plot!(t->sin(2π*t), label="true", lc=:black, ls=:dot, lw=3)
+end
+
+Random.seed!(1)
+plot_bias_var(0.)
+
+Random.seed!(1)
+plot_bias_var(1.)
+
+
+β = 1.
+N = 25
+X = collect(LinRange(0,1,N))
+y = sin.(2*π*X) .+ randn(N)/β
+lm_ml = LM_ML(X, y, basis=monom_basis, λ=0.)
+plot_lm(lm_ml)
