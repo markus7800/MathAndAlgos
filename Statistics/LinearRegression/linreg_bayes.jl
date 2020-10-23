@@ -82,7 +82,7 @@ function plot_lm(lm::LM_Bayes; xlims=nothing, kw...)
         x0, x1 = xlims
         ts = collect(LinRange(x0, x1, 500))
     end
-    σs = map(t->1.96 * √variance(lm, t), ts)
+    σs = map(t->√variance(lm, t), ts)
     plot(ts, predict(lm, ts), ribbon=σs,
         label="MAP with 95% confidence", lc=:black)
     scatter!(vec(lm.X), lm.y, label="data"; kw...)

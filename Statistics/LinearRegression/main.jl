@@ -85,39 +85,81 @@ function monom_basis(x_vec)
     [x^j for j in 0:24]
 end
 
-function plot_bias_var(λ)
-    ts = collect(LinRange(0,1,500))
-    ys = zeros(500)
+function gauss_basis_2(a,b,N,σ)
+    μ = LinRange(a,b,N)
+    function F(x_vec)
+        x = x_vec[1]
+        vcat(1, exp.((x .- μ).^2 / σ^2))
+    end
+end
 
-    β = 1.
+using Statistics
+function plot_bias_var(λ, n_iter)
+
+    ts = collect(LinRange(0,1,500))
+    ys = zeros(n_iter, 500)
+
+    β = 100000
     N = 25
     X = collect(LinRange(0,1,N))
 
-    p = plot()
-    for i in 1:100
+    p = plot(ts, sin.(2*π*ts), ls=:dot, lc=:black, label="true", lw=3)
+    # plot!(ts, sin.(2*π*ts).+1/β, label="", lc=:black, ls=:dot)
+    # plot!(ts, sin.(2*π*ts).-1/β, label="", lc=:black, ls=:dot)
+    for i in 1:n_iter
         y = sin.(2*π*X) .+ randn(N)/β
-        lm_ml = LM_ML(X, y, basis=monom_basis, λ=λ)
+        lm_ml = LM_ML(X, y, basis=gauss_basis_2(0,1,N-1,1.), λ=λ)
         ys´ = predict(lm_ml, ts)
-        ys += ys´/100
-        if i % 5 == 0
+        ys[i,:] = ys´
+        if (i % 5 == 0)
             plot!(ts, ys´, label="", lc=1)
         end
     end
-    plot!(ts, ys, label="average", lc=:black, lw=2)
+    y_mean = zeros(500)
+    y_sd = zeros(500)
+    for i in 1:500
+        y_mean[i] = Statistics.mean(ys[:,i])
+        y_sd[i] = Statistics.std(ys[:,i])
+    end
+    plot!(ts, y_mean, ribbon=y_sd, fc=2, label="average", lc=:black, lw=2)
 
-    plot!(t->sin(2π*t), label="true", lc=:black, ls=:dot, lw=3)
+    # plot!(t->sin(2π*t), label="true", lc=:black, ls=:dot, lw=3)
 end
+Random.seed!(1)
+plot_bias_var(0.,100)
 
 Random.seed!(1)
-plot_bias_var(0.)
+plot_bias_var(1.,100)
 
-Random.seed!(1)
-plot_bias_var(1.)
-
+function interval_basis(a,b,N)
+    μ = collect(LinRange(a,b,N))
+    function F(x_vec)
+        x = x_vec[1]
+        xs = x .- μ
+        xs[xs .> (b-a)/(N-1)] .= 0
+        xs[xs .< 0] .= 0
+        vcat(1, xs)
+    end
+end
 
 β = 1.
 N = 25
 X = collect(LinRange(0,1,N))
 y = sin.(2*π*X) .+ randn(N)/β
-lm_ml = LM_ML(X, y, basis=monom_basis, λ=0.)
+lm_ml = LM_ML(X, y, basis=gauss_basis_2(0,1,100,.1), λ=0.)
+plot_lm(lm_ml)
+
+lm_ml.w
+
+F = interval_basis(0,1,11)
+for x in 0:0.04:1
+    println(x, ": ", F(x))
+end
+
+Random.seed!(1)
+β = 1.
+N = 25
+X = collect(LinRange(0,1,N))
+y = sin.(2*π*X) .+ randn(N)/β
+lm_ml = LM_ML(X, y, basis=interval_basis(0,1,100), λ=0.)
 plot_lm(lm_ml)
