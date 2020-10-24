@@ -8,12 +8,12 @@ mutable struct DVec <: DType
     op::String
 
     function DVec(s::Vector{Float64}, ∇::Vector{Float64}=zeros(length(s));
-            prev=DType[], op="")
+            prev=DType[], op="", bw::Function=∇->nothing)
 
         this = new()
         this.s = s
         this.∇ = ∇
-        this.backward = () -> nothing
+        this.backward = bw
         this.prev = prev # unique?
         this.op = op
         return this

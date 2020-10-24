@@ -2,9 +2,9 @@
 import Base.+
 function +(self::DVal, other::DVal)
     res = DVal(self.s + other.s, prev=[self, other], op="+")
-    res.backward = function bw()
-        self.∇ += res.∇
-        other.∇ += res.∇
+    res.backward = function bw(∇)
+        self.∇ += ∇
+        other.∇ += ∇
     end
     return res
 end
@@ -22,9 +22,9 @@ end
 import Base.*
 function *(self::DVal, other::DVal)
     res = DVal(self.s * other.s, prev=[self, other], op="*")
-    res.backward = function bw()
-        self.∇ += other.s * res.∇
-        other.∇ += self.s * res.∇
+    res.backward = function bw(∇)
+        self.∇ += other.s * ∇
+        other.∇ += self.s * ∇
     end
     return res
 end
@@ -35,8 +35,8 @@ end
 import Base.exp
 function exp(v::DVal)
     res = DVal(exp(v.s), prev=[v], op="exp")
-    res.backward = function bw()
-        v.∇ += res.∇ * exp(v.s)
+    res.backward = function bw(∇)
+        v.∇ += ∇ * exp(v.s)
     end
     return res
 end
@@ -44,8 +44,8 @@ end
 import Base.sin
 function sin(v::DVal)
     res = DVal(sin(v.s), prev=[v], op="sin")
-    res.backward = function bw()
-        v.∇ += res.∇ * cos(v.s)
+    res.backward = function bw(∇)
+        v.∇ += ∇ * cos(v.s)
     end
     return res
 end
@@ -53,8 +53,8 @@ end
 import Base.cos
 function sin(v::DVal)
     res = DVal(sin(v.s), prev=[v], op="cos")
-    res.backward = function bw()
-        v.∇ += res.∇ * -sin(v.s)
+    res.backward = function bw(∇)
+        v.∇ += ∇ * -sin(v.s)
     end
     return res
 end
@@ -62,8 +62,8 @@ end
 import Base.log
 function log(v::DVal)
     res = DVal(log(v.s), prev=[v], op="log")
-    res.backward = function bw()
-        v.∇ += res.∇ * 1/v.s
+    res.backward = function bw(∇)
+        v.∇ += ∇ * 1/v.s
     end
     return res
 end

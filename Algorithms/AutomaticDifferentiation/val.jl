@@ -8,11 +8,13 @@ mutable struct DVal <: DType
 
     op::String
 
-    function DVal(s::Float64, ∇::Float64=0.; prev=DType[], op="")
+    function DVal(s::Float64, ∇::Float64=0.; prev=DType[],
+        op="", bw::Function=∇->nothing)
+
         this = new()
         this.s = s
         this.∇ = ∇
-        this.backward = () -> nothing
+        this.backward = bw
         this.prev = prev # unique?
         this.op = op
         return this

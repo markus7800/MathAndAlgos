@@ -8,12 +8,12 @@ mutable struct DMat <: DType
     op::String
 
     function DMat(s::Matrix{Float64}, ∇::Matrix{Float64}=zeros(size(s));
-        prev=DType[], op="")
+        prev=DType[], op="", bw::Function=∇->nothing)
 
         this = new()
         this.s = s
         this.∇ = ∇
-        this.backward = () -> nothing
+        this.backward = bw
         this.prev = prev # unique?
         this.op = op
         return this
@@ -30,4 +30,3 @@ end
 #     d.∇ .= d.∇'
 #     d
 # end
-#

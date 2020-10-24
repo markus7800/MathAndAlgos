@@ -2,18 +2,18 @@
 import Base.+
 function +(self::DVec, other::DVec)
     res = DVec(self.s + other.s, prev=[self, other], op="+")
-    res.backward = function bw()
-        self.∇ .+= res.∇
-        other.∇ .+= res.∇
+    res.backward = function bw(∇)
+        self.∇ .+= ∇
+        other.∇ .+= ∇
     end
     return demote(res)
 end
 
 function ⋅(self::DVec, other::DVec)
     res = DVal(self.s'other.s, prev=[self, other], op="⋅")
-    res.backward = function bw()
-        self.∇ .+= other.s .* res.∇
-        other.∇ .+= self.s .* res.∇
+    res.backward = function bw(∇)
+        self.∇ .+= other.s .* ∇
+        other.∇ .+= self.s .* ∇
     end
     return demote(res)
 end

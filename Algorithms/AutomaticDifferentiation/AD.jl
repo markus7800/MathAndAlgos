@@ -6,13 +6,13 @@ include("mat.jl")
 
 # Type Conversion
 
-DVal(d::DMat) = DVal(d.s[1], d.∇[1], prev=d.prev, op=d.op)
-DVal(d::DVec) = DVal(d.s[1], d.∇[1], prev=d.prev, op=d.op)
+DVal(d::DMat) = DVal(d.s[1], d.∇[1], prev=d.prev, op=d.op, bw=d.backward)
+DVal(d::DVec) = DVal(d.s[1], d.∇[1], prev=d.prev, op=d.op, bw=d.backward)
 
-DVec(d::DMat) = DVec(vec(d.s), vec(d.∇), prev=d.prev, op=d.op)
-DVec(d::DVal) = DVec([d.s], [d.∇], prev=d.prev, op=d.op)
+DVec(d::DMat) = DVec(vec(d.s), vec(d.∇), prev=d.prev, op=d.op, bw=d.backward)
+DVec(d::DVal) = DVec([d.s], [d.∇], prev=d.prev, op=d.op, bw=d.backward)
 
-DMat(d::DVec) = DMat(reshape(d.s,:,1), reshape(d.∇,:,1), prev=d.prev, op=d.op)
+DMat(d::DVec) = DMat(reshape(d.s,:,1), reshape(d.∇,:,1), prev=d.prev, op=d.op, bw=d.backward)
 DMat(d::DVal) = DMat(DVec(d))
 
 
@@ -68,6 +68,8 @@ demote(d)
 
 
 function backward(d::DType)
+    @assert size(d.s) == ()
+
     # topological order all of the children in the graph
     topo = DType[]
     visited = Set{DType}()
@@ -96,7 +98,7 @@ function backward(d::DType)
     end
 
     for v in reverse(topo)
-        v.backward()
+        v.backward(v.∇)
     end
 end
 
