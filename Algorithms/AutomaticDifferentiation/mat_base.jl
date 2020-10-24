@@ -9,18 +9,61 @@ function +(self::DMat, other::DMat)
     return demote(res)
 end
 
+function +(self::DMat, A::Matrix{T}) where T <: Number
+    res = DMat(self.s + A, prev=[self], op="+")
+    res.backward = function bw(∇)
+        self.∇ .+= ∇
+    end
+    return demote(res)
+end
+
++(A::Matrix{T}, other::DMat) where T <: Number = other + A
 
 import Base.*
 function *(self::DMat, other::DMat)
     res = DMat(self.s*other.s, prev=[self, other], op="⋅")
     res.backward = function bw(∇)
+        #=
+        S = self, O = other S*O = R
+        each value of Rij corresponds to a vector vector product Si:⋅O:j
+        and has gradient ∇Rij.
+
+        A row Si: contributes to a row of gradients (scalar) in ∇R
+        A column O:j contributes to a column of gradients(scalar) in ∇R
+
+        Thus the gradients are
+        ∇Si: = ∇Ri1 O1:^T + ∇Ri2 O2:^T + ... = (∇R O^T)i:
+        ∇O:j = S1:^T ∇R1j + S2:^T ∇R2j + ... = (S^T ∇R):j
+
+        =#
         self.∇ .+=  ∇ * adjoint(other.s)
         other.∇ .+= adjoint(self.s) * ∇
     end
     return demote(res)
 end
+
+function *(self::DMat, A::Matrix{T}) where T <: Number
+    res = DMat(self.s*A, prev=[self], op="⋅")
+    res.backward = function bw(∇)
+        self.∇ .+=  ∇ * adjoint(A)
+    end
+    return demote(res)
+end
+
+
+function *(A::Matrix{T}, other::DMat) where T <: Number
+    res = DMat(A*other.s, prev=[other], op="⋅")
+    res.backward = function bw(∇)
+        other.∇ .+= adjoint(A) * ∇
+    end
+    return demote(res)
+end
+
 *(self::DMat, other::DVec) = self * DMat(other)
-*(self::DVec, other::DMat) = DMat(self) * other
+
+*(self::DMat, other::Vector{T}) where T <: Number = self * reshape(other,:,1)
+
+*(self::Matrix{T}, other::DVec) where T <: Number = self * DMat(other)
 
 v = DMat(DVec([1., 2., 3.]))
 w = DMat(DVec([2., -3., 1.]))
@@ -108,7 +151,7 @@ begin
     for i in 1:m, j in 1:n
         local a = DVec(_A[i,:])
         local b = DVec(_B[:,j])
-        r = a ⋅ b
+        local r = a ⋅ b
         backward(r)
         A∇[i,:] .+= a.∇ * _∇[i,j]
         B∇[:,j] .+= b.∇ * _∇[i,j]
@@ -116,3 +159,27 @@ begin
 
     @assert all(A∇ .≈ A.∇) && all(B∇ .≈ B.∇)
 end
+
+
+# constants
+
+_A = [1. 2.; -3. 4]
+# _A = _A'_A
+
+_x = [-1., 1.]
+
+A = DMat(_A)
+x = DVec(_x)
+
+r = (x)⋅(A*x)
+backward(r)
+
+x.∇
+
+_D = [
+    2*_A[1,1] _A[1,2]+_A[2,1];
+    _A[1,2]+_A[2,1] 2*_A[2,2]
+]
+
+
+@assert x.∇ == _D * _x

@@ -9,15 +9,15 @@ function +(self::DVal, other::DVal)
     return res
 end
 
-# TODO:
-# @macroexpand @D (a,b) -> a*b (a,b) -> [b, a]
-# @D (a,b) -> a*b (a,b) -> [b, a]
-# macro D(X::Expr, Y::Expr)
-#     quote
-#         $(esc(X))
-#         $Y
-#     end
-# end
+function +(self::DVal, r::Number)
+    res = DVal(self.s + r, prev=[self], op="+")
+    res.backward = function bw(∇)
+        self.∇ += ∇
+    end
+    return res
+end
+
++(r::Number, other::DVal) = other + r
 
 import Base.*
 function *(self::DVal, other::DVal)
@@ -28,6 +28,16 @@ function *(self::DVal, other::DVal)
     end
     return res
 end
+
+function *(self::DVal, r::Number)
+    res = DVal(self.s * r, prev=[self], op="*")
+    res.backward = function bw(∇)
+        self.∇ += r * ∇
+    end
+    return res
+end
+
+*(self::Number, other::DVal) = other * self
 
 # res = exp(v)
 # ∂/∂v L(res) (∂/∂v L)(res) d/dv res  = res.∇ * d/dv exp(v)
@@ -104,3 +114,16 @@ B = DVal.(_B)
 C = A * B
 _C = _A * _B
 @assert all(Float64.(C) .≈ _C)
+
+
+# constants
+
+a = DVal(5.)
+r = -3 * a
+backward(r)
+@assert a.∇ == -3
+
+a = DVal(5.)
+r = a + 3.
+backward(r)
+@assert a.∇ == 1
