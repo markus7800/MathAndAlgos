@@ -67,8 +67,7 @@ d = DMat(reshape([1.], 1, 1))
 demote(d)
 
 
-function backward(d::DType)
-    @assert size(d.s) == ()
+function backward(d::DVal; v=false)
 
     # topological order all of the children in the graph
     topo = DType[]
@@ -85,18 +84,11 @@ function backward(d::DType)
 
     build_topo(d)
 
-    # go one variable at a time and apply the chain rule to get its gradient
-    # dval.∇ .= 1
-    if d isa DVal
-        d.∇ = 1
-    elseif d isa DVec
-        d.∇ = ones(length(d.s))
-    elseif d isa DMat
-        d.∇ = ones(size(d.s))
-    else
-        error("PANIC")
-    end
+    d.∇ = 1
 
+    v && println("topo length: ", length(topo))
+
+    # go one variable at a time and apply the chain rule to get its gradient
     for v in reverse(topo)
         v.backward(v.∇)
     end

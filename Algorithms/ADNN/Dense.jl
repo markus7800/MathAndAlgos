@@ -7,5 +7,5 @@ end
 
 function (a::Dense)(x::AbstractArray)
   W, b, σ = a.W, a.b, a.σ
-  σ.(W*x .+ b)
+  σ(W*x .+ b)
 end
