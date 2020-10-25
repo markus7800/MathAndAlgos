@@ -19,9 +19,16 @@ end
 
 +(A::Matrix{T}, other::DMat) where T <: Number = other + A
 
+import Base.-
+-(self::DMat) = (-1) * self
+
+-(self::DMat, other::DMat) = self + (-other)
+-(self::Matrix{T}, other::DMat) where T <: Number = self + (-other)
+-(self::DMat, other::Matrix{T}) where T <: Number = self + (-other)
+
 import Base.*
 function *(self::DMat, other::DMat)
-    res = DMat(self.s*other.s, prev=[self, other], op="⋅")
+    res = DMat(self.s*other.s, prev=[self, other], op="*")
     res.backward = function bw(∇)
         #=
         S = self, O = other S*O = R
@@ -43,7 +50,7 @@ function *(self::DMat, other::DMat)
 end
 
 function *(self::DMat, A::Matrix{T}) where T <: Number
-    res = DMat(self.s*A, prev=[self], op="⋅")
+    res = DMat(self.s*A, prev=[self], op="*")
     res.backward = function bw(∇)
         self.∇ .+=  ∇ * adjoint(A)
     end
@@ -52,7 +59,7 @@ end
 
 
 function *(A::Matrix{T}, other::DMat) where T <: Number
-    res = DMat(A*other.s, prev=[other], op="⋅")
+    res = DMat(A*other.s, prev=[other], op="*")
     res.backward = function bw(∇)
         other.∇ .+= adjoint(A) * ∇
     end
@@ -64,6 +71,16 @@ end
 *(self::DMat, other::Vector{T}) where T <: Number = self * reshape(other,:,1)
 
 *(self::Matrix{T}, other::DVec) where T <: Number = self * DMat(other)
+
+function *(r::Number, other::DMat)
+    res = DMat(r*other.s, prev=[other], op="*")
+    res.backward = function bw(∇)
+        other.∇ .+= r * ∇
+    end
+    return demote(res)
+end
+
+*(self::DMat, r::Number) = r * self
 
 v = DMat(DVec([1., 2., 3.]))
 w = DMat(DVec([2., -3., 1.]))
@@ -183,3 +200,7 @@ _D = [
 
 
 @assert x.∇ == _D * _x
+
+A = DMat(_A)
+
+_A - A
