@@ -1,3 +1,13 @@
+# conversion
+function DVec(v::Vector{DVal})
+    res = DVec(map(d -> d.s, v), prev=v, op="conv.")
+    res.backward = function bw(∇)
+        for (d, g) in zip(res.prev, ∇)
+            d.backward(g) # just pass down gradients
+        end
+    end
+end
+
 
 import Base.+
 function +(self::DVec, other::DVec)
@@ -88,6 +98,17 @@ end
 import Base.sum
 sum(self::DVec) = self ⋅ ones(length(self.s))
 
+
+import Base.exp
+function exp(v::DVec)
+    res = DVec(exp.(v.s), prev=[v], op="exp")
+    res.backward = function bw(∇)
+        v.∇ += ∇ * exp.(v.s)
+    end
+    return res
+end
+
+
 v = DVec([1., 2., 3.])
 w = DVec([2., -3., 1.])
 x = DVec([2., -2., 5.])
@@ -121,11 +142,17 @@ backward(r)
 v = DVec([1., 2., 4.])
 w = [-1., 2., -0.5]
 
+c = 2*(v.s + w)
+
 u = w + v
 r = u ⋅ u
+
+w = [1., 1., 1.]
+
 backward(r)
 
-@assert v.∇ == 2*(v.s + w)
+
+@assert v.∇ == c
 
 # other
 
