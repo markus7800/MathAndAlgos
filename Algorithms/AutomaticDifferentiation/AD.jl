@@ -5,7 +5,7 @@ include("vec.jl")
 include("mat.jl")
 
 # Type Conversion
-
+# TODO: Check backward
 DVal(d::DMat) = DVal(d.s[1], d.∇[1], prev=d.prev, op=d.op, bw=d.backward)
 DVal(d::DVec) = DVal(d.s[1], d.∇[1], prev=d.prev, op=d.op, bw=d.backward)
 
