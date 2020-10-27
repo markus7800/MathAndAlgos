@@ -3,12 +3,12 @@ using Plots
 include("linreg.jl")
 
 
-β = 3.
+β = 2.
 N = 25
 X = collect(LinRange(0,1,N))
 
 Random.seed!(1)
-y = -1.2 .+ 2.3 * X .+ randn(N)/β
+y = -1.2 .+ 2.3 * X .+ randn(N)/β^2
 
 lm_ml = LM_ML(X, y)
 plot_lm(lm_ml)
@@ -27,6 +27,14 @@ end
 
 display(p)
 
+plot_w_prior_2d(lm_bayes)
+plot_w_posterior_2d(lm_bayes)
+
+
+lm_bayes_2 = LM_Bayes(X, y, α=0.1, a0=1,b0=1)
+p = plot_lm(lm_bayes_2)
+plot_β_prior(lm_bayes_2,xlims=(0,5))
+plot_β_posterior(lm_bayes_2,xlims=(0,5))
 
 
 β = 5.
