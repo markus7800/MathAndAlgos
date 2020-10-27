@@ -19,7 +19,7 @@ function +(self::DVal, other::DVal)
 end
 
 function +(self::DVal, r::Number)
-    res = DVal(self.s + r, prev=[self], op="+")
+    res = DVal(self.s + r, prev=[self], op="+ $r")
     res.backward = function bw(∇)
         self.∇ += ∇
     end
@@ -49,7 +49,7 @@ function *(self::DVal, other::DVal)
 end
 
 function *(self::DVal, r::Number)
-    res = DVal(self.s * r, prev=[self], op="*")
+    res = DVal(self.s * r, prev=[self], op="* $r")
     res.backward = function bw(∇)
         self.∇ += r * ∇
     end
@@ -162,3 +162,11 @@ a = DVal(5.)
 r = a + 3.
 backward(r)
 @assert a.∇ == 1
+
+
+# minus
+
+# a = DVal(10.)
+# b = DVal(-5.)
+#
+# a + (-b)

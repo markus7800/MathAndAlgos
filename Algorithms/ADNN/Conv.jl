@@ -91,3 +91,20 @@ conv.σ.(conv.bias .+ w)
 sum(kernel .* X[x:x+kx-1,y:y+ky-1,:,1], dims=(1,2,3))
 
 conv.bias
+
+x = [1., 2., 3.]
+y = [2., -1, 3.]
+
+w = DVec([1.,1.,1.])
+r = x⋅w + y⋅w
+backward(r)
+w.∇
+
+w = DVec([1.,1.,1.])
+
+r = x⋅w
+backward(r)
+r = y⋅w
+backward(r)
+
+w.∇

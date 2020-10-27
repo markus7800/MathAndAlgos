@@ -16,7 +16,7 @@ function +(self::DVec, other::DVec)
         self.∇ .+= ∇
         other.∇ .+= ∇
     end
-    return demote(res)
+    return res
 end
 
 function +(self::DVec, v::Union{Number,Vector{T}}) where T <: Number
@@ -24,17 +24,28 @@ function +(self::DVec, v::Union{Number,Vector{T}}) where T <: Number
     res.backward = function bw(∇)
         self.∇ .+= ∇
     end
-    return demote(res)
+    return res
 end
 
 +(v::Union{Number,Vector{T}}, other::DVec) where T <: Number = other + v
+
+function +(self::DVal, other::DVec)
+    res = DVec(self.s .+ other.s, prev=[self, other], op="+")
+    res.backward = function bw(∇)
+        self.∇ += sum(∇)
+        other.∇ .+= ∇
+    end
+    return res
+end
++(self::DVec, other::DVal) = other + self
 
 import Base.-
 -(self::DVec) = self * (-1)
 
 -(self::DVec, other::DVec) = self + (-other)
--(self::Union{Number,Vector{T}}, other::DVec) where T <: Number = self + (-other)
--(self::DVec, other::Union{Number,Vector{T}}) where T <: Number = self + (-other)
+-(self::Union{Number,Vector{T}, DVal}, other::DVec) where T <: Number = self + (-other)
+-(self::DVec, other::Union{Number,Vector{T}, DVal}) where T <: Number = self + (-other)
+
 
 # elementwise
 import Base.*
@@ -44,7 +55,7 @@ function *(self::DVec, other::DVec)
         self.∇ .+= other.s .* ∇
         other.∇ .+= self.s .* ∇
     end
-    return demote(res)
+    return res
 end
 
 function *(self::DVec, v::Union{Number,Vector{T}}) where T <: Number
@@ -52,7 +63,7 @@ function *(self::DVec, v::Union{Number,Vector{T}}) where T <: Number
     res.backward = function bw(∇)
         self.∇ .+= v .* ∇
     end
-    return demote(res)
+    return res
 end
 
 *(v::Union{Number,Vector{T}}, other::DVec) where T <: Number = other * v
@@ -63,9 +74,9 @@ import Base./
 function /(r::Number, other::DVec)
     res = DVec(r ./ other.s, prev=[other], op="/")
     res.backward = function bw(∇)
-        self.∇ .+= -v .* (1 ./ other.s.^2) .* ∇
+        other.∇ .+= -r .* (1 ./ other.s.^2) .* ∇
     end
-    return demote(res)
+    return res
 end
 
 /(self::DVec, other::DVec) = self * (1/other)
@@ -81,7 +92,7 @@ function ⋅(self::DVec, other::DVec)
         self.∇ .+= other.s * ∇
         other.∇ .+= self.s * ∇
     end
-    return demote(res)
+    return res
 end
 
 
@@ -90,7 +101,7 @@ function ⋅(self::DVec, v::Vector{T}) where T <: Number
     res.backward = function bw(∇)
         self.∇ .+= v .* ∇
     end
-    return demote(res)
+    return res
 end
 
 ⋅(v::Vector{T}, other::DVec) where T <: Number = other ⋅ v
@@ -103,7 +114,7 @@ import Base.exp
 function exp(v::DVec)
     res = DVec(exp.(v.s), prev=[v], op="exp")
     res.backward = function bw(∇)
-        v.∇ += ∇ * exp.(v.s)
+        v.∇ += ∇ .* exp.(v.s)
     end
     return res
 end

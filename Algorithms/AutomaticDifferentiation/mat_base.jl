@@ -6,7 +6,7 @@ function +(self::DMat, other::DMat)
         self.∇ .+= ∇
         other.∇ .+= ∇
     end
-    return demote(res)
+    return res
 end
 
 function +(self::DMat, A::Matrix{T}) where T <: Number
@@ -14,7 +14,7 @@ function +(self::DMat, A::Matrix{T}) where T <: Number
     res.backward = function bw(∇)
         self.∇ .+= ∇
     end
-    return demote(res)
+    return res
 end
 
 +(A::Matrix{T}, other::DMat) where T <: Number = other + A
