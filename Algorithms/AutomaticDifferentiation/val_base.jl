@@ -1,12 +1,3 @@
-# conversion
-function DMat(V::Matrix{DVal})
-    res = DMat(map(d -> d.s, v), prev=vec(V), op="conv.")
-    res.backward = function bw(∇)
-        for (d, g) in zip(res.prev, vec(∇)) # prev stored in vectorised form
-            d.backward(g) # just pass down gradients
-        end
-    end
-end
 
 import Base.+
 function +(self::DVal, other::DVal)

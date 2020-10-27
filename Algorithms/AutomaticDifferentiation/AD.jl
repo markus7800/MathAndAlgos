@@ -3,17 +3,25 @@ abstract type DType end
 include("val.jl")
 include("vec.jl")
 include("mat.jl")
+include("show.jl")
+
 
 # Type Conversion
 # TODO: Check backward
-DVal(d::DMat) = DVal(d.s[1], d.∇[1], prev=d.prev, op=d.op, bw=d.backward)
-DVal(d::DVec) = DVal(d.s[1], d.∇[1], prev=d.prev, op=d.op, bw=d.backward)
+DVal(d::DMat) = DVal(d.s[1], d.∇[1], prev=d.prev, op="val<-mat . " * d.op, bw=d.backward)
+DVal(d::DVec) = DVal(d.s[1], d.∇[1], prev=d.prev, op="val<-vec . " * d.op, bw=d.backward)
 
-DVec(d::DMat) = DVec(vec(d.s), vec(d.∇), prev=d.prev, op=d.op, bw=d.backward)
-DVec(d::DVal) = DVec([d.s], [d.∇], prev=d.prev, op=d.op, bw=d.backward)
+DVec(d::DMat) = DVec(vec(d.s), vec(d.∇), prev=d.prev, op="vec<-mat . " * d.op, bw=d.backward)
+DVec(d::DVal) = DVec([d.s], [d.∇], prev=d.prev, op="vec<-val . " * d.op, bw=∇ -> d.backward(∇[1]))
 
-DMat(d::DVec) = DMat(reshape(d.s,:,1), reshape(d.∇,:,1), prev=d.prev, op=d.op, bw=d.backward)
-DMat(d::DVal) = DMat(DVec(d))
+DMat(d::DVec) = DMat(
+    reshape(d.s,:,1), reshape(d.∇,:,1),
+    prev=d.prev,op="mat<-vec . " * d.op, bw= ∇ -> d.backward(vec(∇))
+    )
+DMat(d::DVal) = DMat(
+    reshape([d.s],1,1), reshape([d.∇],1,1),
+    prev=d.prev, op="mat<-val . " * d.op, bw= ∇ -> d.backward(∇[1])
+    )
 
 
 d = DVal(1π)

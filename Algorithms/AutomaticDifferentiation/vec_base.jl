@@ -1,6 +1,6 @@
 # conversion
 function DVec(v::Vector{DVal})
-    res = DVec(map(d -> d.s, v), prev=v, op="conv.")
+    res = DVec(map(d -> d.s, v), prev=v, op="vec<-[val]")
     res.backward = function bw(∇)
         for (d, g) in zip(res.prev, ∇)
             d.backward(g) # just pass down gradients
@@ -20,7 +20,7 @@ function +(self::DVec, other::DVec)
 end
 
 function +(self::DVec, v::Union{Number,Vector{T}}) where T <: Number
-    res = DVec(self.s .+ v, prev=[self], op="+")
+    res = DVec(self.s .+ v, prev=[self], op="+ C")
     res.backward = function bw(∇)
         self.∇ .+= ∇
     end
@@ -50,7 +50,7 @@ import Base.-
 # elementwise
 import Base.*
 function *(self::DVec, other::DVec)
-    res = DVec(self.s .* other.s, prev=[self, other], op="*")
+    res = DVec(self.s .* other.s, prev=[self, other], op=".*")
     res.backward = function bw(∇)
         self.∇ .+= other.s .* ∇
         other.∇ .+= self.s .* ∇
@@ -59,7 +59,7 @@ function *(self::DVec, other::DVec)
 end
 
 function *(self::DVec, v::Union{Number,Vector{T}}) where T <: Number
-    res = DVec(self.s .* v, prev=[self], op="*")
+    res = DVec(self.s .* v, prev=[self], op=".* C")
     res.backward = function bw(∇)
         self.∇ .+= v .* ∇
     end
@@ -72,7 +72,7 @@ import Base./
 #elementwise
 
 function /(r::Number, other::DVec)
-    res = DVec(r ./ other.s, prev=[other], op="/")
+    res = DVec(r ./ other.s, prev=[other], op="$r ./")
     res.backward = function bw(∇)
         other.∇ .+= -r .* (1 ./ other.s.^2) .* ∇
     end
@@ -81,7 +81,7 @@ end
 
 /(self::DVec, other::DVec) = self * (1/other)
 /(self::DVec, other::Union{Number,Vector{T}}) where T <: Number = self * (1/other)
-/(self::Union{Number,Vector{T}}, other::DVec)  where T <: Number = self * (1/other)
+/(self::Vector{T}, other::DVec)  where T <: Number = self * (1/other)
 
 
 # dot
@@ -112,7 +112,7 @@ sum(self::DVec) = self ⋅ ones(length(self.s))
 
 import Base.exp
 function exp(v::DVec)
-    res = DVec(exp.(v.s), prev=[v], op="exp")
+    res = DVec(exp.(v.s), prev=[v], op="exp.")
     res.backward = function bw(∇)
         v.∇ += ∇ .* exp.(v.s)
     end

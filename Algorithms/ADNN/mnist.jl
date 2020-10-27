@@ -96,7 +96,7 @@ backward(sum(v), v=true)
 
 backward(r, v=true)
 
-v = DVec(ones(10))
+v = DVec(v.s)
 @time r = logitcrossentropy(v, label)
 backward(r, v=true)
 
@@ -106,3 +106,10 @@ r = sum(sigma(v))
 backward(r)
 
 v.∇
+
+import Base.show
+
+function show(io::IO, v::DVec)
+    n = length(v.s)
+    print(io, "$(n)-d vec")
+end

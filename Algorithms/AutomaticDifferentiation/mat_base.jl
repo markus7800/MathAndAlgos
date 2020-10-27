@@ -1,3 +1,12 @@
+# conversion
+function DMat(V::Matrix{DVal})
+    res = DMat(map(d -> d.s, v), prev=vec(V), op="mat<-[val]")
+    res.backward = function bw(∇)
+        for (d, g) in zip(res.prev, vec(∇)) # prev stored in vectorised form
+            d.backward(g) # just pass down gradients
+        end
+    end
+end
 
 import Base.+
 function +(self::DMat, other::DMat)
@@ -10,7 +19,7 @@ function +(self::DMat, other::DMat)
 end
 
 function +(self::DMat, A::Matrix{T}) where T <: Number
-    res = DMat(self.s + A, prev=[self], op="+")
+    res = DMat(self.s + A, prev=[self], op="+ C")
     res.backward = function bw(∇)
         self.∇ .+= ∇
     end
@@ -50,7 +59,7 @@ function *(self::DMat, other::DMat)
 end
 
 function *(self::DMat, A::Matrix{T}) where T <: Number
-    res = DMat(self.s*A, prev=[self], op="*")
+    res = DMat(self.s*A, prev=[self], op="* C")
     res.backward = function bw(∇)
         self.∇ .+=  ∇ * adjoint(A)
     end
@@ -59,7 +68,7 @@ end
 
 
 function *(A::Matrix{T}, other::DMat) where T <: Number
-    res = DMat(A*other.s, prev=[other], op="*")
+    res = DMat(A*other.s, prev=[other], op="C *")
     res.backward = function bw(∇)
         other.∇ .+= adjoint(A) * ∇
     end
@@ -73,7 +82,7 @@ end
 *(self::Matrix{T}, other::DVec) where T <: Number = self * DMat(other)
 
 function *(r::Number, other::DMat)
-    res = DMat(r*other.s, prev=[other], op="*")
+    res = DMat(r*other.s, prev=[other], op="$r *")
     res.backward = function bw(∇)
         other.∇ .+= r * ∇
     end
