@@ -3,6 +3,7 @@ abstract type DType end
 include("val.jl")
 include("vec.jl")
 include("mat.jl")
+include("tensor.jl")
 include("show.jl")
 
 
@@ -105,6 +106,7 @@ end
 include("val_base.jl")
 include("vec_base.jl")
 include("mat_base.jl")
+include("tensor_base.jl")
 
 # function gradient(f::Function, params::Vector)
 #     map!(p -> DVal(p), params, params)

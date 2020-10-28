@@ -8,6 +8,7 @@ end
 short_str(v::DVal) = "val"
 short_str(v::DVec) = "$(length(v.s))-d vec"
 short_str(v::DMat) = "$(dim_str(size(v.s)))-d mat"
+short_str(v::DTensor) = "$(dim_str(size(v.s)))-d tensor"
 
 
 function show(io::IO, v::DType)
