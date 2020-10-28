@@ -10,4 +10,14 @@ function (a::Dense)(x::Union{AbstractVector, DVec})
   σ(W*x + b)
 end
 
-Dense(in::Int, out::Int, σ::Function=identity) = Dense(DMat(rand(out,in)), DVec(rand(out)), σ)
+function Dense(in::Int, out::Int, σ::Function=identity; init=:glorot)
+    if init == :glorot
+        x = sqrt(6 / (in + out))
+        W = x*(2*rand(out,in).-1) # uniform [-x,x]
+    elseif init == :normal
+        W = randn(out,in)
+    else
+        W = rand(out,in)
+    end
+    Dense(DMat(W), DVec(zeros(out)), σ)
+end

@@ -2,7 +2,8 @@ include("NN.jl")
 
 using Flux.Data.MNIST
 using Base.Iterators: partition
-using Flux: onehotbatch, flatten
+using Flux: onehotbatch, onecold, flatten
+using Statistics
 
 # Bundle images together with labels and group into minibatchess
 function make_minibatch(X, Y, idxs)
@@ -31,24 +32,6 @@ function get_processed_data(batch_size)
 end
 
 
-# MLP
-
-
-train_set, test_set = get_processed_data(128)
-
-train_set = map(batch -> flatten.(batch), train_set)
-test_set = flatten.(test_set)
-
-n_in = size(test_set[1], 1)
-
-Random.seed!(1)
-m = Model(
-  Dense(n_in, 30, sigma),
-  Dense(30, 10, sigma)
-)
-
-m(test_set[1][:,1])
-
 
 function update_GDS!(d::DVal; η=0.01)
     # topological order all of the children in the graph
@@ -64,52 +47,149 @@ function update_GDS!(d::DVal; η=0.01)
         end
     end
 
-    for v in reverse(topo)
-        v.s .-= η * v.∇
-        v.∇ .= 0
-    end
-end
+    build_topo(d)
 
-function learn!(m::Model, train_set)
-    for batch in train_set
-        imgs, labels = batch
-        batch_size = size(imgs,2)
-        for i in 1:batch_size
-            img = imgs[:,i]
-            label = labels[:,i]
-            r = logitcrossentropy(m(img), label)
-            backward(r)
+    for v in reverse(topo)
+        v.s -= η * v.∇
+        if v isa DVal
+            v.∇ = 0
+        else
+            v.∇ .= 0
         end
     end
 end
+accuracy(m, test_set) = accuracy(m, test_set...)
+accuracy(model::Model, x, y) = mean(map(i -> onecold(model(x[:,i]).s) == onecold(y[:,i]), 1:size(x,2)))
+accuracy(model::Chain, x, y) = mean(map(i -> onecold(model(x[:,i])) == onecold(y[:,i]), 1:size(x,2)))
 
-imgs, labels = train_set[1]
+
+using ProgressMeter
+function learn!(m::Model, train_set; η=0.01)
+    @showprogress for batch in train_set
+        imgs, labels = batch
+        batch_size = size(imgs,2)
+        r = DVal(0.)
+        for i in 1:batch_size
+            img = imgs[:,i]
+            label = labels[:,i]
+            r += logitcrossentropy(m(img), label)
+        end
+        backward(r)
+        update_GDS!(r, η=η/batch_size)
+    end
+end
+
+
+# MLP
+
+
+train_set, test_set = get_processed_data(128)
+
+train_set = map(batch -> flatten.(batch), train_set)
+test_set = flatten.(test_set)
+
+n_in = size(test_set[1], 1)
+
+Random.seed!(1)
+m = Model(
+  Dense(n_in, 30, sigma, init=:glorot),
+  Dense(30, 10, sigma, init=:glorot)
+)
+
+accuracy(m, test_set)
+learn!(m, train_set, η=1.)
+accuracy(m, test_set)
+
+
+Random.seed!(1)
+m = Model(
+  Dense(n_in, 30, sigma, init=:normal),
+  Dense(30, 10, sigma, init=:normal)
+)
+
+accuracy(m, test_set)
+learn!(m, train_set, η=1.)
+accuracy(m, test_set)
+
+
+Random.seed!(1)
+m = Model(
+  Dense(n_in, 30, sigma, init=:uniform),
+  Dense(30, 10, sigma, init=:uniform)
+)
+
+accuracy(m, test_set)
+learn!(m, train_set, η=1.)
+accuracy(m, test_set)
+
+
+
+
+
+
+
+
+
+m(test_set[1][:,1])
+m.layers[1].W.s
 
 i = 10
 img = imgs[:,i]
 label = labels[:,i]
 
-v = m(img)
-backward(sum(v), v=true)
-
-@time r = logitcrossentropy(v, label)
-
+r = logitcrossentropy(m(img), label)
+print_tree(r)
 backward(r, v=true)
 
-v = DVec(v.s)
-@time r = logitcrossentropy(v, label)
-backward(r, v=true)
+m.layers[2].b.∇
+
+update_GDS!(r, η=0.01)
 
 
-v = DVec(ones(10))
-r = sum(sigma(v))
-backward(r)
+accuracy(test_imgs, test_labels, m)
 
-v.∇
+m(img).s
 
-import Base.show
+learn!(m, train_set)
+accuracy(imgs, labels, m)
 
-function show(io::IO, v::DVec)
-    n = length(v.s)
-    print(io, "$(n)-d vec")
+import Flux
+Random.seed!(1)
+m2 = Chain(
+  Flux.Dense(n_in, 30, sigma),
+  Flux.Dense(30, 10, sigma)
+)
+
+m2.layers[1].W .= m.layers[1].W.s
+m2.layers[1].b .= m.layers[1].b.s
+m2.layers[2].W .= m.layers[2].W.s
+m2.layers[2].b .= m.layers[2].b.s
+
+
+m(test_set[1][:,1]).s
+
+
+m2(test_set[1][:,1])
+
+g = gradient(params(m)) do
+    Flux.logitcrossentropy(m2(img), label)
 end
+
+Flux.logitcrossentropy(m2(img), label)
+
+a = Flux.logitcrossentropy(m2(test_imgs), test_labels)
+b = sum(Flux.logitcrossentropy(m2(test_imgs[:,i]), test_labels[:,i]) for i in 1:size(test_imgs,2)) / size(test_imgs,2)
+a .≈ b
+
+k = collect(keys(g.grads))[3]
+
+g.grads[k][1][1][2]
+
+augment(x) = x .+ 0.1f0*randn(eltype(x), size(x))
+loss(x,y) = Flux.logitcrossentropy(m2(x), y)
+
+accuracy(test_imgs, test_labels, m2)
+
+Flux.Optimise.train!(loss, params(m2), train_set, Descent(1))
+
+accuracy(test_imgs, test_labels, m2)
