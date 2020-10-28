@@ -32,35 +32,9 @@ function get_processed_data(batch_size)
 end
 
 
-
-function update_GDS!(d::DVal; η=0.01)
-    # topological order all of the children in the graph
-    topo = DType[]
-    visited = Set{DType}()
-    function build_topo(v)
-        if !(v in visited)
-            push!(visited, v)
-            for child in v.prev
-                build_topo(child)
-            end
-            push!(topo,v)
-        end
-    end
-
-    build_topo(d)
-
-    for v in reverse(topo)
-        v.s -= η * v.∇
-        if v isa DVal
-            v.∇ = 0
-        else
-            v.∇ .= 0
-        end
-    end
-end
 accuracy(m, test_set) = accuracy(m, test_set...)
 accuracy(model::Model, x, y) = mean(map(i -> onecold(model(x[:,i]).s) == onecold(y[:,i]), 1:size(x,2)))
-accuracy(model::Chain, x, y) = mean(map(i -> onecold(model(x[:,i])) == onecold(y[:,i]), 1:size(x,2)))
+# accuracy(model::Chain, x, y) = mean(map(i -> onecold(model(x[:,i])) == onecold(y[:,i]), 1:size(x,2)))
 
 
 using ProgressMeter
@@ -75,7 +49,7 @@ function learn!(m::Model, train_set; η=0.01)
             r += logitcrossentropy(m(img), label)
         end
         backward(r)
-        update_GDS!(r, η=η/batch_size)
+        update_GDS!(m, η=η/batch_size)
     end
 end
 
@@ -193,3 +167,30 @@ accuracy(test_imgs, test_labels, m2)
 Flux.Optimise.train!(loss, params(m2), train_set, Descent(1))
 
 accuracy(test_imgs, test_labels, m2)
+
+
+function update_GDS!(d::DVal; η=0.01)
+    # topological order all of the children in the graph
+    topo = DType[]
+    visited = Set{DType}()
+    function build_topo(v)
+        if !(v in visited)
+            push!(visited, v)
+            for child in v.prev
+                build_topo(child)
+            end
+            push!(topo,v)
+        end
+    end
+
+    build_topo(d)
+
+    for v in reverse(topo)
+        v.s -= η * v.∇
+        if v isa DVal
+            v.∇ = 0
+        else
+            v.∇ .= 0
+        end
+    end
+end
