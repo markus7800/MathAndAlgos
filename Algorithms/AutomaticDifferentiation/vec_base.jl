@@ -3,7 +3,7 @@ function DVec(v::Vector{DVal})
     res = DVec(map(d -> d.s, v), prev=v, op="vec<-[val]")
     res.backward = function bw(∇)
         for (d, g) in zip(res.prev, ∇)
-            d.backward(g) # just pass down gradients
+            d.∇ += g # just pass down gradients
         end
     end
 end

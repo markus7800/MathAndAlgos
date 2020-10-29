@@ -8,21 +8,39 @@
 #     end
 # end
 
+function shape_diff(self, other)
+    s1 = size(self)
+    s2 = size(other)
+    l = max(length(s1), length(s2))
+    _s1 = vcat(s1..., zeros(l-length(s1)))
+    _s2 = vcat(s2..., zeros(l-length(s2)))
+    dims1 = findall(_s2 .> _s1)
+    dims2 = findall(_s1 .> _s2)
+    return s1, dims1, s2, dims2
+end
+
 
 import Base.+
 function +(self::DTensor, other::DTensor)
+    # determine shape differences
+    s1, dims1, s2, dims2 = shape_diff(self, other)
+    # if shape is same dims1 = dims2 = [] and sum does nothing
+
     res = DTensor(self.s .+ other.s, prev=[self, other], op=".+")
     res.backward = function bw(∇)
-        self.∇ .+= ∇
-        other.∇ .+= ∇
+        r1 = sum(∇, dims=dims1) # sum not matching dims up to "reverse broadcasting"
+        r2 = sum(∇, dims=dims2)
+        self.∇ .+= reshape(r1, s1)
+        other.∇ .+= reshape(r2, s2)
     end
     return res
 end
 
 function +(self::DTensor, v::Union{Number,Array{T}}) where T <: Number
+    s1, dims1, = shape_diff(self, v)
     res = DTensor(self.s .+ v, prev=[self], op="+ C")
     res.backward = function bw(∇)
-        self.∇ .+= ∇
+        self.∇ .+= reshape(sum(∇, dims=dims1), s1)
     end
     return res
 end
@@ -50,18 +68,28 @@ end
 # elementwise
 import Base.*
 function *(self::DTensor, other::DTensor)
+    # determine shape differences
+    s1, dims1, s2, dims2 = shape_diff(self, other)
+    # if shape is same dims1 = dims2 = [] and sum does nothing
+
     res = DTensor(self.s .* other.s, prev=[self, other], op=".*")
     res.backward = function bw(∇)
-        self.∇ .+= other.s .* ∇
-        other.∇ .+= self.s .* ∇
+        r1 = sum(other.s .* ∇, dims=dims1) # sum not matching dims up to "reverse broadcasting"
+        r2 = sum(self.s .* ∇, dims=dims2)
+        self.∇ .+= reshape(r1, s1)
+        other.∇ .+= reshape(r2, s2)
     end
     return res
 end
 
 function *(self::DTensor, other::Array{T}) where T <: Number
+    # determine shape differences
+    s1, dims1, s2, dims2 = shape_diff(self, other)
+    # if shape is same dims1 = dims2 = [] and sum does nothing
+
     res = DTensor(self.s .* other, prev=[self], op=".* C")
     res.backward = function bw(∇)
-        self.∇ .+= other .* ∇
+        self.∇ .+= reshape(sum(other .* ∇, dims=dims1), s1)
     end
     return res
 end
@@ -74,7 +102,8 @@ import Base.setindex!
 function getindex(self::DTensor, I...)
     res = DTensor(getindex(self.s, I...), prev=[self], op="[$I]")
     res.backward = function bw(∇)
-        setindex!(self.∇, self.∇ .+ ∇, I...)
+        S = getindex(self.∇, I...)
+        setindex!(self.∇, S .+ ∇, I...)
     end
     return res
 end
@@ -120,7 +149,7 @@ function DTensor(arr::Array{DTensor,2})
     res = DTensor(T, prev=vec(arr), op="conv")
     res.backward = function bw(∇)
         for i in 1:m, j in 1:n
-            arr[i,j].backward(reshape(∇[i,j,ranges...], d))
+            arr[i,j].∇ += reshape(∇[i,j,ranges...], d)
         end
     end
     return res
@@ -130,7 +159,7 @@ function DTensor(A::Array{DVal})
     res = DTensor(map(d -> d.s, A), prev=vec(A), op="tensor<-[val]")
     res.backward = function bw(∇)
         for (d, g) in zip(res.prev, vec(∇)) # prev stored in vectorised form
-            d.backward(g) # just pass down gradients
+            d.∇ += g # just pass down gradients
         end
     end
     return res
@@ -150,7 +179,7 @@ function max(r::Number, self::DTensor)
     res = DTensor(max.(r, self.s), prev=[self], op="max.($r,.)")
     res.backward = function bw(∇)
         I = self.s .== res.s
-        res.∇[I] .+= ∇[I]
+        self.∇[I] .+= ∇[I]
     end
     return res
 end
@@ -160,7 +189,7 @@ function maximum(self::DTensor)
     v, i = findmax(self.s)
     res = DVal(v, prev=[self], op="maximum")
     res.backward = function bw(∇)
-        res.∇[i] += ∇
+        self.∇[i] += ∇
     end
     return res
 end
@@ -191,3 +220,17 @@ A.∇
 A2 = sum(A, dims=1)
 
 A2.backward(reshape([1,2,3],1,:))
+
+
+
+A = DVal.([1. 2.; 3. 4.])
+B = DTensor(A)
+C = reshape(B, 1, 4)
+r = maximum(C)
+backward(r)
+@assert A[2,2].∇ == 1
+
+
+map(a -> a.∇, A)
+B.∇
+C.∇

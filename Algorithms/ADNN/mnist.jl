@@ -146,6 +146,4 @@ img = test_set[1][:,:,:,1]
 lab = test_set[2][:,1]
 
 r = logitcrossentropy(m(img), lab)
-
-
 backward(r)
