@@ -13,7 +13,6 @@ function (mp::MaxPool)(A::Union{AbstractVector, DTensor})
 	maxpool(mp.size, mp.stride, A)
 end
 
-
 # 3 dimensional array
 function maxpool(ksize::Tuple{Int,Int}, stride::Tuple{Int,Int}, A::DTensor)
 	kx, ky = ksize

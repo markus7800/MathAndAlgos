@@ -21,6 +21,13 @@ function (c::Conv)(x::Union{DTensor, AbstractArray})
 	convolve(c.W, c.b, c.stride, c.σ, x)
 end
 
+function update_GDS!(c::Conv; η)
+	c.W.s .-= η * c.W.∇
+	c.b.s .-= η * c.b.∇
+	c.W.∇ .= 0
+	c.b.∇ .= 0
+end
+
 function flip(W)
 	kx, ky, kd1, kd2 = size(W)
 	[W[kx-i+1,kx-j+1,k,l] for i in 1:ky, j in 1:ky, k in 1:kd1, l in 1:kd2]

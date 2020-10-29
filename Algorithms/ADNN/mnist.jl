@@ -42,7 +42,7 @@ end
 
 
 using ProgressMeter
-function learn!(m::Model, train_set; η=0.01)
+function learn!(m::Model, train_set; opt::Flux.Optimiser)
     cols = fill(:, length(size(train_set[1][1]))-1)
 
     @showprogress for batch in train_set
@@ -54,11 +54,18 @@ function learn!(m::Model, train_set; η=0.01)
             label = labels[:,i]
             r += logitcrossentropy(m(img), label)
         end
-        backward(r)
+        backward(r*(1/batch_size))
         update_GDS!(m, η=η/batch_size)
     end
 end
 
+function train!(m::Model, train_set, test_set, n_epoch)
+
+    for n in 1:n_epoch
+    learn!(m, train_set, η=1.)
+    accuracy(m, test_set)
+
+end
 
 flatten(x) = reshape(x,:,size(x)[end])
 
