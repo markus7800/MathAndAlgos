@@ -80,19 +80,20 @@ function getindex(self::DTensor, I...)
 end
 
 import Base.sum
-# function sum(self::DTensor)
-#     res = DVal(sum(self.s), prev=[self], op="sum")
-#     res.backward = function bw(∇)
-#         self.∇ .+= ∇ # ∇ is scalar
-#     end
-#     return res
-# end
-
-function sum(self::DTensor; dims)
-    r = sum(self.s, dims=dims)
-    res = DTensor(r, prev=[self], op="sum")
-    res.backward = function bw(∇)
-        self.∇ .+= ∇
+# TODO: make prettier
+function sum(self::DTensor; dims=nothing)
+    if dims == nothing
+        res = DVal(sum(self.s), prev=[self], op="sum")
+        res.backward = function bw1(∇)
+            self.∇ .+= ∇ # ∇ is scalar
+        end
+        return res
+    else
+        r = sum(self.s, dims=dims)
+        res = DTensor(r, prev=[self], op="sum")
+        res.backward = function bw2(∇)
+            self.∇ .+= ∇
+        end
     end
     return res
 end
@@ -121,6 +122,25 @@ function DTensor(arr::Array{DTensor,2})
         for i in 1:m, j in 1:n
             arr[i,j].backward(reshape(∇[i,j,ranges...], d))
         end
+    end
+    return res
+end
+
+function DTensor(A::Array{DVal})
+    res = DTensor(map(d -> d.s, A), prev=vec(A), op="tensor<-[val]")
+    res.backward = function bw(∇)
+        for (d, g) in zip(res.prev, vec(∇)) # prev stored in vectorised form
+            d.backward(g) # just pass down gradients
+        end
+    end
+    return res
+end
+
+function flatten(self::DTensor)
+    shape = size(self)
+    res = DVec(vec(self.s), prev=[self], op="flatten")
+    res.backward = function bw(∇)
+        self.∇ .+= reshape(∇, shape)
     end
     return res
 end

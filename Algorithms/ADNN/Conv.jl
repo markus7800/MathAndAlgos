@@ -5,9 +5,8 @@ mutable struct Conv
     stride::Tuple{Int,Int}
 end
 
-function Conv(size::Pair, ch::Pair, stride=1, σ::Function=identity; init=:glorot)
-	strides = (0,0)
-	strides .+= stride
+function Conv(size::Tuple{Int,Int}, ch::Pair{Int,Int}, σ::Function=identity; stride=1, init=:glorot)
+	strides = (0,0) .+ stride
 	if init == :glorot
 		W = glorot(size..., ch...)
 	elseif init == :normal
@@ -16,6 +15,10 @@ function Conv(size::Pair, ch::Pair, stride=1, σ::Function=identity; init=:gloro
 	b = zeros(ch[2])
 
 	Conv(DTensor(W), DTensor(b), σ, strides)
+end
+
+function (c::Conv)(x::Union{DTensor, AbstractArray})
+	convolve(c.W, c.b, c.stride, c.σ, x)
 end
 
 function flip(W)
@@ -30,10 +33,10 @@ function size_after_conv(input_size::T, stride::T, size::T) where T <: Tuple{Int
 	return n(input_size[1], size[1], stride[1]), n(input_size[2], size[2], stride[2])
 end
 
-# W is flipped kernel to agree with standard defintion of convolution
-function convolve(W::DTensor, b::DTensor, stride::Tuple{Int,Int}, σ::Function, A)
+# W is flipped kernel to agree with standard definition of convolution
+function convolve(W::DTensor, b::DTensor, stride::Tuple{Int,Int}, σ::Function, A::Union{DTensor, AbstractArray})
 	kx, ky, kd1, kd2 = size(W)
-	inx, iny, inz = size(A)
+	inx, iny, = size(A)
 	m, n = size_after_conv((inx, iny), stride, (kx, ky))
 	output = Array{DTensor, 2}(undef, m, n)
 	for i in 1:m, j in 1:n
@@ -49,15 +52,15 @@ end
 import Flux
 using Random
 Random.seed!(1)
-conv = Flux.Conv((10, 10), (2=>3), Flux.relu, stride=4)
+conv = Flux.Conv((10, 10), (1=>3), Flux.relu, stride=4)
 conv.weight
 conv.bias
-X = rand(Float32, 60, 60, 2, 1)
+X = rand(Float32, 60, 60, 1, 1)
 C1 = conv(X)
 
 W = DTensor(Float64.(flip(conv.weight)))
 b = DTensor(Float64.(conv.bias))
-A=X[:,:,:,1]
+A=X[:,:,1,1]
 C2 = convolve(W, b, conv.stride, relu, A)
 
 all(C1 .≈ C2.s)

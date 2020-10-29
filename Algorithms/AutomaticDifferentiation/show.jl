@@ -2,6 +2,9 @@
 import Base.show
 
 function dim_str(ns::Tuple)
+    # if sum(ns) == 1
+    #     "0"
+    # else
     join(string.(ns), "×")
 end
 
@@ -14,8 +17,16 @@ short_str(v::DTensor) = "$(dim_str(size(v.s)))-d tensor"
 function show(io::IO, v::DType)
     n = length(v.s)
     l = length(v.prev)
-    prev_str = l <= 3 ? "prev=$(short_str.(v.prev))" : "$l prev"
-    print(io, short_str(v) * ", "* prev_str * ", op=$(v.op)")
+    if l == 0
+        print(io, short_str(v))
+    else
+        if l <= 3
+            prev_str = "prev=$(short_str.(v.prev))"
+        else
+            prev_str = "$l prev"
+        end
+        print(io, short_str(v) * ", "* prev_str * ", op=$(v.op)")
+    end
 end
 
 

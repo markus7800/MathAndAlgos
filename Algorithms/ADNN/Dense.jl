@@ -11,17 +11,18 @@ function (a::Dense)(x::Union{AbstractVector, DVec})
 end
 
 function glorot(N...)
-    x = sqrt(6 / sum(N...))
+    x = sqrt(6 / sum(N))
     W = x*(2*rand(N...).-1) # uniform [-x,x]
 end
 
 
 function Dense(in::Int, out::Int, σ::Function=identity; init=:glorot)
     if init == :glorot
-        glorot(in, out)
+        W = glorot(out, in)
     elseif init == :normal
         W = randn(out,in)
     else
+        @warn "Uniform init. u stupid?"
         W = rand(out,in)
     end
     Dense(DMat(W), DVec(zeros(out)), σ)
