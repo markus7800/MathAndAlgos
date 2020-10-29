@@ -20,3 +20,6 @@ mutable struct DTensor <: DType
         return this
     end
 end
+
+import Base.size
+size(d::DTensor) = size(d.s)

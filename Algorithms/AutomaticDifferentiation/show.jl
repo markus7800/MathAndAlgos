@@ -13,7 +13,9 @@ short_str(v::DTensor) = "$(dim_str(size(v.s)))-d tensor"
 
 function show(io::IO, v::DType)
     n = length(v.s)
-    print(io, short_str(v) * ", prev=$(short_str.(v.prev)), op=$(v.op)")
+    l = length(v.prev)
+    prev_str = l <= 3 ? "prev=$(short_str.(v.prev))" : "$l prev"
+    print(io, short_str(v) * ", "* prev_str * ", op=$(v.op)")
 end
 
 

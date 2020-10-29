@@ -1,7 +1,7 @@
 
-function sigma(x)
-    1/(1+exp(-x))
-end
+
+sigmoid(x::DType) = 1/(1+exp(-x))
+
 
 # import Flux.logsoftmax
 logsoftmax(v::DVec) = v - log(sum(exp(v)))
@@ -9,6 +9,4 @@ logsoftmax(v::DVec) = v - log(sum(exp(v)))
 # import Flux.logitcrossentropy
 logitcrossentropy(ŷ::DVec, y::Vector) = -sum(y * logsoftmax(ŷ))
 
-v = DVec([1., 2., 3.])
-
-logitcrossentropy(v, [true, false, false])
+relu(x::DType) = max(0,x)
