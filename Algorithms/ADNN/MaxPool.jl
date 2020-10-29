@@ -26,6 +26,3 @@ function maxpool(ksize::Tuple{Int,Int}, stride::Tuple{Int,Int}, A::DTensor)
 	end
 	return DTensor(output)
 end
-
-A = DTensor(Float64.(X[:,:,:,1]))
-maxpool((2,2), (1,1), A)

@@ -21,9 +21,9 @@ function (c::Conv)(x::Union{DTensor, AbstractArray})
 	convolve(c.W, c.b, c.stride, c.σ, x)
 end
 
-function update_GDS!(c::Conv; η)
-	c.W.s .-= η * c.W.∇
-	c.b.s .-= η * c.b.∇
+function update_GDS!(c::Conv, opt)
+	update!(opt, c.W.s, c.W.∇)
+    update!(opt, c.b.s, c.b.∇)
 	c.W.∇ .= 0
 	c.b.∇ .= 0
 end
@@ -55,19 +55,3 @@ function convolve(W::DTensor, b::DTensor, stride::Tuple{Int,Int}, σ::Function, 
 	end
 	return DTensor(output)
 end
-
-import Flux
-using Random
-Random.seed!(1)
-conv = Flux.Conv((10, 10), (1=>3), Flux.relu, stride=4)
-conv.weight
-conv.bias
-X = rand(Float32, 60, 60, 1, 1)
-C1 = conv(X)
-
-W = DTensor(Float64.(flip(conv.weight)))
-b = DTensor(Float64.(conv.bias))
-A=X[:,:,1,1]
-C2 = convolve(W, b, conv.stride, relu, A)
-
-all(C1 .≈ C2.s)

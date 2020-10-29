@@ -4,6 +4,7 @@ using Flux.Data.MNIST
 using Base.Iterators: partition
 using Flux: onehotbatch, onecold
 using Statistics
+using StatsBase
 
 # Bundle images together with labels and group into minibatchess
 function make_minibatch(X, Y, idxs)
@@ -41,11 +42,11 @@ end
 # accuracy(model::Chain, x, y) = mean(map(i -> onecold(model(x[:,i])) == onecold(y[:,i]), 1:size(x,2)))
 
 
-using ProgressMeter
-function learn!(m::Model, train_set; opt::Flux.Optimiser)
+import ProgressMeter
+function learn!(m::Model, train_set, opt)
     cols = fill(:, length(size(train_set[1][1]))-1)
 
-    @showprogress for batch in train_set
+    ProgressMeter.@showprogress for batch in train_set
         imgs, labels = batch
         batch_size = size(imgs,2)
         r = DVal(0.)
@@ -55,16 +56,21 @@ function learn!(m::Model, train_set; opt::Flux.Optimiser)
             r += logitcrossentropy(m(img), label)
         end
         backward(r*(1/batch_size))
-        update_GDS!(m, η=η/batch_size)
+        update_GDS!(m, opt)
     end
 end
 
-function train!(m::Model, train_set, test_set, n_epoch)
-
+function train!(m::Model, train_set, test_set, n_epoch, opt=Descent(0.01))
+    n_batches = length(train_set)
+    @info "Start training..."
+    acc = accuracy(m, test_set)
+    @info "Start accuracy: $acc"
     for n in 1:n_epoch
-    learn!(m, train_set, η=1.)
-    accuracy(m, test_set)
-
+        is = sample(1:n_batches, n_batches, replace=true)
+        learn!(m, train_set[is], opt)
+        acc = accuracy(m, test_set)
+        @info "Epoch $n/$n_epoch done. Accuracy: $acc"
+    end
 end
 
 flatten(x) = reshape(x,:,size(x)[end])
@@ -87,7 +93,7 @@ m = Model(
 )
 
 accuracy(m, test_set)
-learn!(m, train_set, η=1.)
+learn!(m, train_set, Descent(1.))
 accuracy(m, test_set)
 
 
@@ -98,7 +104,7 @@ m = Model(
 )
 
 accuracy(m, test_set)
-learn!(m, train_set, η=1.)
+learn!(m, train_set, Descent(1.))
 accuracy(m, test_set)
 
 
@@ -109,10 +115,21 @@ m = Model(
 )
 
 accuracy(m, test_set)
-learn!(m, train_set, η=1.)
+learn!(m, train_set, Descent(1.0))
 accuracy(m, test_set)
 
 
+Random.seed!(1)
+m = Model(
+  Dense(n_in, 30, sigmoid, init=:glorot),
+  Dense(30, 10, sigmoid, init=:glorot)
+)
+
+Random.seed!(1)
+train!(m, train_set, test_set, 10, Descent(1.)) # 92.8 %
+
+Random.seed!(1)
+train!(m, train_set, test_set, 10, ADAM()) # 93 %
 
 
 
@@ -144,13 +161,14 @@ train_set = map(batch -> Array.(batch), train_set)
 test_set = Array.(test_set)
 
 
-accuracy(m, test_set)
-learn!(m, train_set, η=0.01)
-
 train_set[1][1]
 
 img = test_set[1][:,:,:,1]
 lab = test_set[2][:,1]
 
 r = logitcrossentropy(m(img), lab)
-backward(r)
+backward(r, v=true)
+
+Random.seed!(1)
+# only 30 times slower :)
+train!(m, train_set, test_set, 5, ADAM())

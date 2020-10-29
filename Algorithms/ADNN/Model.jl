@@ -10,5 +10,5 @@ applychain(fs::Tuple, x) = applychain(tail(fs), first(fs)(x))
 
 (c::Model)(x) = applychain(c.layers, x)
 
-update_GDS!(m::Model; η=0.01) = foreach(l -> update_GDS!(l, η=η), m.layers)
-update_GDS!(x; η) = nothing
+update_GDS!(m::Model, opt) = foreach(l -> update_GDS!(l, opt), m.layers)
+update_GDS!(x, opt) = nothing

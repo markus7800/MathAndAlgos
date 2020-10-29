@@ -28,9 +28,18 @@ function Dense(in::Int, out::Int, σ::Function=identity; init=:glorot)
     Dense(DMat(W), DVec(zeros(out)), σ)
 end
 
-function update_GDS!(m::Dense; η=0.01)
-    m.W.s .-= η * m.W.∇
-    m.b.s .-= η * m.b.∇
+# function update_GDS!(m::Dense; η=0.01)
+#     m.W.s .-= η * m.W.∇
+#     m.b.s .-= η * m.b.∇
+#
+#     m.W.∇ .= 0
+#     m.b.∇ .= 0
+# end
+
+
+function update_GDS!(m::Dense, opt)
+    update!(opt, m.W.s, m.W.∇)
+    update!(opt, m.b.s, m.b.∇)
 
     m.W.∇ .= 0
     m.b.∇ .= 0
