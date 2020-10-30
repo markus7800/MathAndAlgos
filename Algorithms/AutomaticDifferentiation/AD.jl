@@ -47,7 +47,7 @@ end
 
 function backward(d::DVal; v=false)
 
-    # topological order all of the children in the graph
+    # order the tree nodes by depth
     topo = DType[]
     visited = Set{DType}()
     function build_topo(v)
