@@ -172,3 +172,6 @@ backward(r, v=true)
 Random.seed!(1)
 # only 30 times slower :)
 train!(m, train_set, test_set, 5, ADAM())
+
+Random.seed!(1)
+@Profiler train!(m, train_set[1:100], test_set, 5, ADAM())

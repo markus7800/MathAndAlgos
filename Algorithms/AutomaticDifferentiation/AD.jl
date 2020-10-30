@@ -8,7 +8,6 @@ include("show.jl")
 
 
 # Type Conversion
-# TODO: Check backward
 DVal(d::DMat) = DVal(d.s[1], d.∇[1], prev=d.prev, op="val<-mat . " * d.op, bw=d.backward)
 DVal(d::DVec) = DVal(d.s[1], d.∇[1], prev=d.prev, op="val<-vec . " * d.op, bw=d.backward)
 
@@ -24,18 +23,6 @@ DMat(d::DVal) = DMat(
     prev=d.prev, op="mat<-val . " * d.op, bw= ∇ -> d.backward(∇[1])
     )
 
-
-d = DVal(1π)
-DVec(d)
-DMat(d)
-
-d = DVec([1π, 2π])
-DVal(d)
-DMat(d)
-
-d = DMat([1π 2π; 3π 4π])
-DVal(d)
-DVec(d)
 
 # Demotions
 
@@ -56,24 +43,6 @@ function demote(d::DType)
     return d
 end
 
-
-d = DMat([1. 2.; 3. 4.])
-demote(d)
-
-d = DVec([1., 2.])
-demote(d)
-
-d = DVal(1.)
-demote(d)
-
-d = DMat([1. 2.;])
-demote(d)
-
-d = DMat(Matrix(adjoint([1. 2.])))
-demote(d)
-
-d = DMat(reshape([1.], 1, 1))
-demote(d)
 
 
 function backward(d::DVal; v=false)
@@ -103,15 +72,7 @@ function backward(d::DVal; v=false)
     end
 end
 
-include("val_base.jl")
-include("vec_base.jl")
-include("mat_base.jl")
-include("tensor_base.jl")
-
-# function gradient(f::Function, params::Vector)
-#     map!(p -> DVal(p), params, params)
-#     r = f()
-#     r.backward()
-#     r.s, map(p -> p.∇, params)
-#     # map!(Float64(params))
-# end
+include("base/val_base.jl")
+include("base/vec_base.jl")
+include("base/mat_base.jl")
+include("base/tensor_base.jl")
