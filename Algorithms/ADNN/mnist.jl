@@ -6,6 +6,7 @@ using Flux: onehotbatch, onecold
 using Statistics
 using StatsBase
 using Random
+import JLD
 
 # Bundle images together with labels and group into minibatchess
 function make_minibatch(X, Y, idxs)
@@ -138,7 +139,6 @@ Random.seed!(1)
 train!(m, train_set, test_set, 10, ADAM()) # 93 %
 
 
-
 # CONV
 Random.seed!(1)
 m = Model(
@@ -178,12 +178,83 @@ using BenchmarkTools
 
 (60000 * (59+29) + 10000 * 59) / 1000 / 60
 
+test_set100 = (test_set[1][:,:,:,1:100], test_set[2][:,1:100])
+
 Random.seed!(1)
 # only 30 times slower :)
-train!(m, train_set, test_set, 5, ADAM())
+train!(m, train_set, test_set100, 5, ADAM(),aug=true) # 95.77 % after 5, 97.9 % after 10
 
-test_set10 = (test_set[1][:,:,:,1:10], test_set[2][:,1:10])
+JLD.save("convmodel.jld",
+    "W1", m.layers[1].W.s, "b1", m.layers[1].b.s,
+    "W2", m.layers[3].W.s, "b2", m.layers[3].b.s,
+    "W3", m.layers[5].W.s, "b3", m.layers[5].b.s,
+    "W4", m.layers[8].W.s, "b4", m.layers[8].b.s
+)
+
 
 @time accuracy(m, test_set)
 
+est = map(i -> m(test_set[1][:,:,:,i]).s, 1:size(test_set[1],4))
+softmax(v) = exp.(v) / sum(exp.(v))
+ps = softmax.(est)
+sum(onecold.(est) .== onecold(test_set[2]))
+wronga = findall(onecold.(est) .!= onecold(test_set[2]))
+
 m(test_set[1])
+using Plots
+function plot_img_core(img, lab, ps)
+    n = size(img, 1)
+    img = [img[n-i+1,j] for i in 1:n, j in 1:n]
+
+    p1 = heatmap(img, legend=false)
+    p2 = bar(0:9, ps, legend=false)
+    bar!([lab], [ps[lab+1]], fc=:green)
+    f, i = findmax(ps)
+    bar!([i-1], [f], fc=:red)
+    xticks!(0:9)
+    ylims!((0,1))
+    plot(p1,p2)
+end
+function plot_img(set, ps, i)
+    # println(size(set[1][:,:,1,i]), ", ", findfirst(set[2][:,i])-1, ", ", ps[i])
+    plot_img_core(set[1][:,:,1,i], findfirst(set[2][:,i])-1, ps[i])
+end
+
+function make_wronga_anim(wronga)
+    anim = Animation()
+    @progress for i in wronga
+        p = plot_img(test_set, ps, i)
+        frame(anim, p)
+    end
+    return anim
+end
+
+
+anim = make_wronga_anim(wronga)
+
+gif(anim, "wronga.gif", fps=1)
+plot_img(test_set, ps, 44)
+
+import Flux
+Random.seed!(1)
+m2 = Flux.Chain(
+    # First convolution, operating upon a 28x28 image
+    Flux.Conv((3, 3), 1=>16, Flux.relu),
+    Flux.MaxPool((2,2)),
+
+    # Second convolution, operating upon a 13x13 image
+    Flux.Conv((3, 3), 16=>32, Flux.relu),
+    Flux.MaxPool((2,2)),
+
+    # Third convolution, operating upon a 5x5 image
+    Flux.Conv((3, 3), 32=>32, Flux.relu),
+    Flux.MaxPool((2,2)),
+
+    # Reshape 3d tensor into a 2d one using flatten, at this point it should be (1, 1, 32, N)
+    Flux.flatten,
+    Flux.Dense(32, 10)
+)
+
+@btime Flux.logitcrossentropy(m2(test_set[1][:,:,:,1:1]), lab) # 162.408 μs
+
+@time Flux.logitcrossentropy(m2(test_set[1]), test_set[2]) # 2.45 s
