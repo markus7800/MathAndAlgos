@@ -44,3 +44,8 @@ function update_GDS!(m::Dense, opt)
     m.W.∇ .= 0
     m.b.∇ .= 0
 end
+
+function zero_∇!(m::Dense)
+    m.W.∇ .= 0
+    m.b.∇ .= 0
+end

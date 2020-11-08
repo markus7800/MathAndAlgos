@@ -3,44 +3,14 @@ using BenchmarkTools
 using Random
 include("NN.jl")
 
-function Conv(c::Flux.Conv)
+function Conv(c::Flux.Conv, σ=identity)
     W = Float64.(flip(c.weight))
     b = Float64.(c.bias)
-    σ = c.σ
     stride = c.stride
     Conv(DTensor(W),DTensor(b),σ,stride)
 end
-
-function convolve_slice(W::AbstractArray, b::AbstractArray, stride::Tuple{Int,Int}, σ::Function, A::AbstractArray)
-	kx, ky, kd1, kd2 = size(W)
-	inx, iny, = size(A)
-	m, n = size_after_conv((inx, iny), stride, (kx, ky))
-	output = Array{eltype(W), 3}(undef, m, n, kd2)
-	for i in 1:m, j in 1:n
-		x = 1+(i-1)*stride[1]
-		y = 1+(j-1)*stride[2]
-		w = sum(W .* A[x:x+kx-1,y:y+ky-1,:], dims=(1,2,3))
-		w = reshape(w, :)
-		output[i,j,:] .= σ.(b .+ w)
-	end
-	return output
-end
-
-function convolve_loop(W::AbstractArray, b::AbstractArray, stride::Tuple{Int,Int}, A::AbstractArray)
-	kx, ky, kd1, kd2 = size(W)
-	inx, iny, = size(A)
-	m, n = size_after_conv((inx, iny), stride, (kx, ky))
-	output = Array{eltype(W), 3}(undef, m, n, kd2)
-	@inbounds for i in 1:m, j in 1:n, k in 1:kd2
-		x = 1+(i-1)*stride[1]
-		y = 1+(j-1)*stride[2]
-		acc = eltype(W)(0)
-		for (i´,x´) in enumerate(x:x+kx-1), (j´,y´) in enumerate(y:y+ky-1), l in 1:kd1
-			acc += W[i´,j´,l,k] * A[x´,y´,l]
-		end
-		output[i,j,k] = b[k] + acc
-	end
-	return output
+function Dense(m::Flux.Dense, σ=identity)
+	Dense(DMat(Float64.(m.W)), DVec(Float64.(m.b)), σ)
 end
 
 
@@ -55,7 +25,7 @@ sum(abs.(convolve_loop(my_conv.W.s, my_conv.b.s, my_conv.stride, X_) .-
 	convolve_loop(my_conv.W.s, my_conv.b.s, my_conv.stride, X_)))
 
 @btime conv_flux(X) # 5.526 ms (45 allocations: 692.05 KiB)
-@btime my_conv(X_) # 214.307 ms (1364570 allocations: 144.67 MiB)
+@btime my_conv(X_) # 5.547 ms (9 allocations: 690.45 KiB) vs prev 214.307 ms (1364570 allocations: 144.67 MiB)
 @btime convolve_slice(my_conv.W.s, my_conv.b.s, my_conv.stride, my_conv.σ, X_) # 17.400 ms (70659 allocations: 50.67 MiB)
 @btime convolve_loop(my_conv.W.s, my_conv.b.s, my_conv.stride, X_) # 12.331 ms (3 allocations: 345.11 KiB)
 @btime convolve_loop(my_conv.W.s, my_conv.b.s, my_conv.stride, X_) # 5.515 ms (3 allocations: 345.11 KiB) (inbounds macro)
@@ -81,24 +51,6 @@ Y = Float32.(X)
 
 ################################################################################
 
-# without sigma
-function ∇convolve_loop(W::AbstractArray, b::AbstractArray, stride::Tuple{Int,Int}, A::AbstractArray, ∇::AbstractArray)
-	∇W = zeros(size(W)); ∇b=zeros(size(b)); ∇A = zeros(size(A))
-	kx, ky, kd1, kd2 = size(W)
-	inx, iny, = size(A)
-	m, n = size_after_conv((inx, iny), stride, (kx, ky))
-	@assert (m, n, kd2) == size(∇)
-	for i in 1:m, j in 1:n, k in 1:kd2
-		x = 1+(i-1)*stride[1]
-		y = 1+(j-1)*stride[2]
-		for (i´,x´) in enumerate(x:x+kx-1), (j´,y´) in enumerate(y:y+ky-1), l in 1:kd1
-			∇W[i´,j´,l,k] +=  A[x´,y´,l] * ∇[i,j,k]
-			∇A[x´,y´,l] += W[i´,j´,l, k] * ∇[i,j,k]
-		end
-		∇b[k] += ∇[i,j,k]
-	end
-	return ∇W, ∇b, ∇A
-end
 
 Random.seed!(1)
 conv_flux = Flux.Conv((5,5), 5=>10)

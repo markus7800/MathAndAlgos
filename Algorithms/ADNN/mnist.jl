@@ -48,6 +48,8 @@ augment(x) = x .+ 0.1*randn(eltype(x), size(x))
 
 import ProgressMeter
 function learn!(m::Model, train_set, opt; aug=false)
+    zero_∇!(m)
+
     cols = fill(:, length(size(train_set[1][1]))-1)
 
     ProgressMeter.@showprogress for batch in train_set
@@ -173,15 +175,17 @@ img = test_set[1][:,:,:,1]
 lab = test_set[2][:,1]
 
 using BenchmarkTools
-@btime r = logitcrossentropy(m(img), lab) # 59ms
-@btime backward(r) # 29ms
+@btime r = logitcrossentropy(m(img), lab) # 15.970 ms vs prev 59ms
+r = logitcrossentropy(m(img), lab)
+@btime backward(r) # 10.407 ms vs prev 29ms
 
 (60000 * (59+29) + 10000 * 59) / 1000 / 60
 
 test_set100 = (test_set[1][:,:,:,1:100], test_set[2][:,1:100])
 
 Random.seed!(1)
-# only 30 times slower :)
+# only 7 times slower now instead of 30 times slower :)
+# now 7 mins instead of 25-30 mins
 train!(m, train_set, test_set100, 5, ADAM(),aug=true) # 95.77 % after 5, 97.9 % after 10
 
 JLD.save("convmodel.jld",
@@ -192,7 +196,7 @@ JLD.save("convmodel.jld",
 )
 
 
-@time accuracy(m, test_set)
+@timed accuracy(m, test_set)
 
 est = map(i -> m(test_set[1][:,:,:,i]).s, 1:size(test_set[1],4))
 softmax(v) = exp.(v) / sum(exp.(v))
@@ -258,3 +262,35 @@ m2 = Flux.Chain(
 @btime Flux.logitcrossentropy(m2(test_set[1][:,:,:,1:1]), lab) # 162.408 μs
 
 @time Flux.logitcrossentropy(m2(test_set[1]), test_set[2]) # 2.45 s
+
+m3 = Model(
+    Conv(m2.layers[1], relu),
+    MaxPool((2,2)),
+    Conv(m2.layers[3], relu),
+    MaxPool((2,2)),
+    Conv(m2.layers[5], relu),
+    MaxPool((2,2)),
+    flatten,
+    Dense(m2.layers[8])
+)
+
+
+zero_∇!(m3)
+r = logitcrossentropy(m3(img), lab)
+r.s
+backward(r)
+
+img_ = reshape(img, size(img)..., 1)
+Flux.logitcrossentropy(m2(img_),lab)
+
+ps = Flux.params(m2)
+gs = Flux.gradient(ps) do
+    Flux.logitcrossentropy(m2(img_), lab)
+end
+gs[m2.layers[1].weight]
+∇W = m3.layers[1].W.∇
+
+sum(abs.(gs[m2.layers[1].weight] .- flip(m3.layers[1].W.∇)))
+∇W
+
+sum(abs.(∇W .- ∇W_))
