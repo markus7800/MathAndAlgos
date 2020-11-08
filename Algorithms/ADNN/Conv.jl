@@ -5,6 +5,8 @@ mutable struct Conv
     stride::Tuple{Int,Int}
 end
 
+# TODO: Write forward backward pass as a whole
+
 function Conv(size::Tuple{Int,Int}, ch::Pair{Int,Int}, σ::Function=identity; stride=1, init=:glorot)
 	strides = (0,0) .+ stride
 	if init == :glorot
@@ -30,7 +32,7 @@ end
 
 function flip(W)
 	kx, ky, kd1, kd2 = size(W)
-	[W[kx-i+1,kx-j+1,k,l] for i in 1:ky, j in 1:ky, k in 1:kd1, l in 1:kd2]
+	[W[kx-i+1,ky-j+1,k,l] for i in 1:kx, j in 1:ky, k in 1:kd1, l in 1:kd2]
 end
 
 function size_after_conv(input_size::T, stride::T, size::T) where T <: Tuple{Int,Int}
@@ -39,6 +41,7 @@ function size_after_conv(input_size::T, stride::T, size::T) where T <: Tuple{Int
 	end
 	return n(input_size[1], size[1], stride[1]), n(input_size[2], size[2], stride[2])
 end
+
 
 # W is flipped kernel to agree with standard definition of convolution
 function convolve(W::DTensor, b::DTensor, stride::Tuple{Int,Int}, σ::Function, A::Union{DTensor, AbstractArray})
