@@ -106,3 +106,35 @@ end # 452.639 ms (1907797 allocations: 316.44 MiB)
 	my_conv.W.∇ .+= ∇W
 	my_conv.b.∇ .+= ∇b
 end # 51.536 ms (39 allocations: 897.20 KiB)
+
+
+
+
+
+Random.seed!(1)
+mp_flux = Flux.MaxPool((5,5))
+X = randn(100, 50, 5, 1)
+X_ = reshape(X, 100, 50, 5)
+Y = Float32.(X)
+
+ps = Flux.params(mp_flux, X)
+gs = Flux.gradient(ps) do
+	sum(mp_flux(X))
+end
+gs[X]
+
+TX_ = DTensor(X_)
+my_mp = MaxPool((5,5))
+r = sum(my_mp(TX_))
+backward(r)
+
+sum(abs.(mp_flux(X) .- my_mp(TX_).s))
+sum(abs.(gs[ps[1]] .- TX_.∇))
+
+∇ = ones(size(my_mp(TX_))[1:3])
+
+out = maxpool(my_mp.size, my_mp.stride, TX_.s)
+∇A = ∇maxpool(my_mp.size, my_mp.stride, TX_.s, out, ∇)
+
+
+sum(abs.(gs[X] .- ∇A))
