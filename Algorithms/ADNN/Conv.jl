@@ -96,7 +96,7 @@ function convolve_loop(W::AbstractArray, b::AbstractArray, stride::Tuple{Int,Int
 	@inbounds for i in 1:m, j in 1:n, k in 1:kd2
 		x = 1+(i-1)*stride[1]
 		y = 1+(j-1)*stride[2]
-		acc = eltype(W)(0)
+		acc = 0.
 		for (i´,x´) in enumerate(x:x+kx-1), (j´,y´) in enumerate(y:y+ky-1), l in 1:kd1
 			acc += W[i´,j´,l,k] * A[x´,y´,l]
 		end

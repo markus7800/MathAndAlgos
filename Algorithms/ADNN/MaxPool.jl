@@ -11,10 +11,10 @@ end
 # 3 dimensional array
 function (mp::MaxPool)(A::DTensor)
 	# maxpool(mp.size, mp.stride, A)
-	out = maxpool(my_mp.size, my_mp.stride, A.s)
+	out = maxpool(mp.size, mp.stride, A.s)
 	res = DTensor(out, prev=[A], op="maxpool")
 	res.backward = function bw(∇)
-		∇A = ∇maxpool(my_mp.size, my_mp.stride, A.s, out, ∇)
+		∇A = ∇maxpool(mp.size, mp.stride, A.s, out, ∇)
 		A.∇ += ∇A
 	end
 	res
