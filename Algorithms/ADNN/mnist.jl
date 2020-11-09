@@ -69,15 +69,24 @@ function learn!(m::Model, train_set, opt; aug=false)
     end
 end
 
+# import Flux.Optimise.train!
 function train!(m::Model, train_set, test_set, n_epoch, opt=Descent(0.01); kw...)
     n_batches = length(train_set)
     @info "Start training..."
-    acc = accuracy(m, test_set)
-    @info "Start accuracy: $acc"
+    last_impr = 0
+    best_acc = accuracy(m, test_set)
+    @info "Start accuracy: $best_acc"
     for n in 1:n_epoch
         is = sample(1:n_batches, n_batches, replace=true)
         learn!(m, train_set[is], opt; kw...)
         acc = accuracy(m, test_set)
+        if acc > best_acc
+            best_acc = acc
+            last_impr = n
+        elseif n-last_impr > 5 && opt.eta > 10e-6
+            opt.eta /= 10
+            @warn "Dropping learning rate to $(opt.eta)."
+        end
         @info "Epoch $n/$n_epoch done. Accuracy: $acc"
     end
 end
@@ -186,7 +195,7 @@ test_set100 = (test_set[1][:,:,:,1:100], test_set[2][:,1:100])
 Random.seed!(1)
 # only 2 times slower now instead of 30 times slower :)
 # now 2 mins instead of 25-30 mins
-train!(m, train_set, test_set, 20, ADAM(),aug=true) # 95.77 % after 5, 97.9 % after 5+5, 97.67 % after 20
+train!(m, train_set, test_set, 20, ADAM(),aug=true) # 95.77 % after 5, 97.9 % after 5+5, 97.67
 
 JLD.save("convmodel.jld",
     "W1", m.layers[1].W.s, "b1", m.layers[1].b.s,
@@ -198,10 +207,37 @@ JLD.save("convmodel.jld",
 
 @timed accuracy(m, test_set)
 
+Random.seed!(1)
+m = Model(
+    # First convolution, operating upon a 28x28 image
+    Conv((3, 3), 1=>16, relu, pad=(1,1)),
+    MaxPool((2,2)),
+
+    # Second convolution, operating upon a 14x14 image
+    Conv((3, 3), 16=>32, relu, pad=(1,1)),
+    MaxPool((2,2)),
+
+    # Third convolution, operating upon a 7x7 image
+    Conv((3, 3), 32=>32, relu, pad=(1,1)),
+    MaxPool((2,2)),
+
+    # Reshape 3d tensor into a 2d one using flatten, at this point it should be (3, 3, 32, N)
+    flatten,
+    Dense(288, 10)
+)
+
+
+
+Random.seed!(1)
+train!(m, train_set, test_set, 20, ADAM(3e-3),aug=true) # 0.9867 after 20
+
+
+# PLOTS
+
 est = map(i -> m(test_set[1][:,:,:,i]).s, 1:size(test_set[1],4))
 softmax(v) = exp.(v) / sum(exp.(v))
 ps = softmax.(est)
-sum(onecold.(est) .== onecold(test_set[2]))
+sum(onecold.(est) .!= onecold(test_set[2]))
 wronga = findall(onecold.(est) .!= onecold(test_set[2]))
 
 m(test_set[1])
@@ -236,8 +272,9 @@ end
 
 anim = make_wronga_anim(wronga)
 
-gif(anim, "wronga.gif", fps=1)
-plot_img(test_set, ps, 44)
+gif(anim, "wronga_pad.gif", fps=0.5)
+
+
 
 import Flux
 Random.seed!(1)
