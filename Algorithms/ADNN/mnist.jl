@@ -83,6 +83,7 @@ function train!(m::Model, train_set, test_set, n_epoch, opt=Descent(0.01); kw...
         if acc > best_acc
             best_acc = acc
             last_impr = n
+            @info "New optimum!"
         elseif n-last_impr > 5 && opt.eta > 10e-6
             opt.eta /= 10
             @warn "Dropping learning rate to $(opt.eta)."
@@ -229,16 +230,24 @@ m = Model(
 
 
 Random.seed!(1)
-train!(m, train_set, test_set, 20, ADAM(3e-3),aug=true) # 0.9867 after 20
+opt = ADAM(3e-3)
+train!(m, train_set, test_set, 35, opt, aug=true) # 0.9867 after 20, 0.9884 after 35
 
 
 # PLOTS
+N = size(test_set[1],4)
+test_pairs = zip([test_set[1][:,:,:,i] for i in 1:N], onecold(test_set[2]))
+test_pairs = collect(test_pairs)
+sort!(test_pairs, lt=(x,y)->x[2]<y[2])
+test_pairs_labs = map(x->x[2], test_pairs)
 
-est = map(i -> m(test_set[1][:,:,:,i]).s, 1:size(test_set[1],4))
+est = map(i -> m(test_pairs[i][1]).s, 1:N)
 softmax(v) = exp.(v) / sum(exp.(v))
 ps = softmax.(est)
-sum(onecold.(est) .!= onecold(test_set[2]))
-wronga = findall(onecold.(est) .!= onecold(test_set[2]))
+sum(onecold.(est) .!= test_pairs_labs)
+wronga = findall(onecold.(est) .!= test_pairs_labs)
+righta = findall(onecold.(est) .== test_pairs_labs)
+
 
 m(test_set[1])
 using Plots
@@ -247,33 +256,34 @@ function plot_img_core(img, lab, ps)
     img = [img[n-i+1,j] for i in 1:n, j in 1:n]
 
     p1 = heatmap(img, legend=false)
-    p2 = bar(0:9, ps, legend=false)
-    bar!([lab], [ps[lab+1]], fc=:green)
+    p2 = bar([lab], [1], fc=3)#:green)
+    bar!(0:9, ps, legend=false, fc=1)
     f, i = findmax(ps)
-    bar!([i-1], [f], fc=:red)
+    bar!([i-1], [f], fc=1)#:red)
     xticks!(0:9)
     ylims!((0,1))
     plot(p1,p2)
 end
 function plot_img(set, ps, i)
     # println(size(set[1][:,:,1,i]), ", ", findfirst(set[2][:,i])-1, ", ", ps[i])
-    plot_img_core(set[1][:,:,1,i], findfirst(set[2][:,i])-1, ps[i])
+    plot_img_core(set[i][1], set[i][2]-1, ps[i])
 end
 
-function make_wronga_anim(wronga)
+function make_anim(is)
     anim = Animation()
-    @progress for i in wronga
-        p = plot_img(test_set, ps, i)
+    @progress for i in is
+        p = plot_img(test_pairs, ps, i)
         frame(anim, p)
     end
     return anim
 end
 
 
-anim = make_wronga_anim(wronga)
+anim = make_anim(wronga)
+gif(anim, "wronga_pad_2.gif", fps=0.5)
 
-gif(anim, "wronga_pad.gif", fps=0.5)
-
+anim = make_anim(righta)
+gif(anim, "righta_pad_2.gif", fps=30)
 
 
 import Flux
