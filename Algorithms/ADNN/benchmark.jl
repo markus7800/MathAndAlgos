@@ -7,7 +7,8 @@ function Conv(c::Flux.Conv, σ=identity)
     W = Float64.(flip(c.weight))
     b = Float64.(c.bias)
     stride = c.stride
-    Conv(DTensor(W),DTensor(b),σ,stride)
+	pad = c.pad[[1,2]]
+    Conv(DTensor(W),DTensor(b),σ,stride,pad)
 end
 function Dense(m::Flux.Dense, σ=identity)
 	Dense(DMat(Float64.(m.W)), DVec(Float64.(m.b)), σ)
@@ -138,3 +139,26 @@ out = maxpool(my_mp.size, my_mp.stride, TX_.s)
 
 
 sum(abs.(gs[X] .- ∇A))
+
+
+Random.seed!(1)
+conv_flux = Flux.Conv((5,5), 5=>10, pad=(2,3))
+my_conv = Conv(conv_flux)
+X = randn(100, 50, 5, 1)
+X_ = reshape(X, 100, 50, 5)
+
+sum(abs.(conv_flux(X) .- my_conv(X_).s))
+
+ps = Flux.params(conv_flux, X)
+gs = Flux.gradient(ps) do
+	sum(conv_flux(X))
+end
+
+TX_ = DTensor(X_)
+my_conv = Conv(conv_flux)
+backward(sum(my_conv(TX_)))
+
+sum(abs.(conv_flux(X) .- my_conv(TX_).s))
+sum(abs.(gs[ps[3]] .- TX_.∇))
+sum(abs.(gs[ps[2]] .- my_conv.b.∇))
+sum(abs.(gs[ps[1]] .- flip(my_conv.W.∇)))

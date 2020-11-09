@@ -184,9 +184,9 @@ r = logitcrossentropy(m(img), lab)
 test_set100 = (test_set[1][:,:,:,1:100], test_set[2][:,1:100])
 
 Random.seed!(1)
-# only 7 times slower now instead of 30 times slower :)
-# now 7 mins instead of 25-30 mins
-train!(m, train_set, test_set100, 5, ADAM(),aug=true) # 95.77 % after 5, 97.9 % after 10
+# only 2 times slower now instead of 30 times slower :)
+# now 2 mins instead of 25-30 mins
+train!(m, train_set, test_set, 20, ADAM(),aug=true) # 95.77 % after 5, 97.9 % after 5+5, 97.67 % after 20
 
 JLD.save("convmodel.jld",
     "W1", m.layers[1].W.s, "b1", m.layers[1].b.s,

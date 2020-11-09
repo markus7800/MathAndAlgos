@@ -24,7 +24,7 @@ end
 function maxpool(ksize::Tuple{Int,Int}, stride::Tuple{Int,Int}, A::DTensor)
 	kx, ky = ksize
 	inx, iny, inz = size(A)
-	m, n = size_after_conv((inx, iny), stride, (kx, ky))
+	m, n = size_after_conv((inx, iny), stride, (0,0), (kx, ky))
 	output = Array{DVal, 3}(undef, m, n, inz)
 	for i in 1:m, j in 1:n, k in 1:inz
 		x = 1+(i-1)*stride[1]
@@ -39,7 +39,7 @@ end
 function maxpool(ksize::Tuple{Int,Int}, stride::Tuple{Int,Int}, A::AbstractArray)
 	kx, ky = ksize
 	inx, iny, inz = size(A)
-	m, n = size_after_conv((inx, iny), stride, (kx, ky))
+	m, n = size_after_conv((inx, iny), stride, (0,0), (kx, ky))
 	output = Array{Float64, 3}(undef, m, n, inz)
 	@inbounds for i in 1:m, j in 1:n, k in 1:inz
 		x = 1+(i-1)*stride[1]
@@ -58,7 +58,7 @@ function ∇maxpool(ksize::Tuple{Int,Int}, stride::Tuple{Int,Int}, A::AbstractAr
 	kx, ky = ksize
 	inx, iny, inz = size(A)
 	∇A = zeros(inx, iny, inz)
-	m, n = size_after_conv((inx, iny), stride, (kx, ky))
+	m, n = size_after_conv((inx, iny), stride, (0,0), (kx, ky))
 	@assert (m,n,inz) == size(∇)
 	@inbounds for i in 1:m, j in 1:n, k in 1:inz
 		x = 1+(i-1)*stride[1]
