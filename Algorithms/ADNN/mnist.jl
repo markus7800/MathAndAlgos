@@ -233,6 +233,15 @@ Random.seed!(1)
 opt = ADAM(3e-3)
 train!(m, train_set, test_set, 35, opt, aug=true) # 0.9867 after 20, 0.9884 after 35
 
+import JLD2
+
+JLD2.@save("Algorithms/ADNN/conv_model.jld",
+    "W1"=m.layers[1].W.s, "b1"=m.layers[1].b.s,
+    "W3"=m.layers[3].W.s, "b3"=m.layers[3].b.s,
+    "W5"=m.layers[5].W.s, "b5"=m.layers[5].b.s,
+    "W8"=m.layers[8].W.s, "b8"=m.layers[8].b.s)
+
+
 
 # PLOTS
 N = size(test_set[1],4)
@@ -265,25 +274,29 @@ function plot_img_core(img, lab, ps)
     plot(p1,p2)
 end
 function plot_img(set, ps, i)
-    # println(size(set[1][:,:,1,i]), ", ", findfirst(set[2][:,i])-1, ", ", ps[i])
     plot_img_core(set[i][1], set[i][2]-1, ps[i])
 end
 
-function make_anim(is)
+function make_anim(is, r=1)
     anim = Animation()
-    @progress for i in is
-        p = plot_img(test_pairs, ps, i)
-        frame(anim, p)
+    @progress for (j,i) in enumerate(is)
+        if (j-1) % r == 0
+            p = plot_img(test_pairs, ps, i)
+            frame(anim, p)
+        end
     end
     return anim
 end
 
 
 anim = make_anim(wronga)
-gif(anim, "wronga_pad_2.gif", fps=0.5)
+gif(anim, "wronga_pad_2_fast.gif", fps=1)
 
 anim = make_anim(righta)
 gif(anim, "righta_pad_2.gif", fps=30)
+
+anim = make_anim(righta)
+gif(anim, "righta_pad_2_short.gif", fps=30)
 
 
 import Flux
