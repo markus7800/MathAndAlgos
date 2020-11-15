@@ -45,8 +45,7 @@ end
 
 
 
-function backward(d::DVal; v=false)
-
+function backward(d::DVal)
     # order the tree nodes by depth
     topo = DType[]
     visited = Set{DType}()
@@ -63,9 +62,6 @@ function backward(d::DVal; v=false)
     build_topo(d)
 
     d.∇ = 1
-
-    v && println("topo length: ", length(topo))
-
     # go one variable at a time and apply the chain rule to get its gradient
     for v in reverse(topo)
         v.backward(v.∇)
