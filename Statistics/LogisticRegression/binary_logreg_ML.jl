@@ -66,7 +66,7 @@ function NewtonRaphson(Phi::Matrix, y::Vector, λ; max_iter=10^3)
 
         missclass = sum(y != predict(Phi, w))
         d∇ = norm(∇E)
-        if d∇ < 1e-12
+        if d∇ < 1e-12 || missclass == 0
             @info "Iter $i: missclass = $missclass, ||∇|| = $d∇"
             break
         end

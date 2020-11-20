@@ -5,7 +5,7 @@ include("../../utils/posdef.jl")
 struct MULTI_LOGR_ML
     X::Matrix
     Y::Matrix
-    W::Vector
+    W::Matrix
     basis::Function
     λ::Float64
 
@@ -38,41 +38,34 @@ function softmax(A::Matrix)
 end
 
 function predict(Phi::Matrix, W::Matrix)
-    p0 = softmax(Phi * W)
-    ŷ = zeros(size(Phi,1))
-    return ŷ
+    P = softmax(Phi * W)
+    maxs = maximum(P, dims=2)
+    return Int.(P .== maxs)
 end
 
-function predict(lg::BIN_LOGR_ML, X_pred)
+function predict(lg::MULTI_LOGR_ML, X_pred)
     Phi = calc_ϕ(X_pred, lg.basis)
-    p0 = σ.(Phi * lg.w)
-    ŷ = zeros(size(Phi,1))
-    ŷ[p0 .< 0.5] .= 1
-    return ŷ
+    return predict(Phi, lg.W)
 end
 
-function NewtonRaphson(Phi::Matrix, y::Vector, λ; max_iter=10^3)
+function GD(Phi::Matrix, Y::Matrix, λ; η=0.01, max_iter=10^5)
     p = size(Phi,2)
-    w = ones(p)
+    n_class = size(Y,2)
+    W = ones(p, n_class)
 
-    for i in 1:max_iter
-        ŷ = σ.(Phi * w)
-        ∇E = (Phi')*(ŷ - y) + λ*w
-        R = Diagonal(ŷ .* (1 .- ŷ))
-        ∇∇E = Phi'R*Phi + λ*I(p)
-        make_symmetric!(∇∇E)
-        make_posdef!(∇∇E)
-        w -= cholesky(∇∇E) \ ∇E
+    @progress for i in 1:max_iter
+        Ŷ = softmax(Phi * W)
+        ∇E = (Phi')*(Ŷ - Y) + λ*W
+        W -= η * ∇E
 
-        # z = Phi*w - R \ (ŷ - y)
-        # w == ∇∇E \ Phi'R*z
-
-        missclass = sum(y .!= predict(Phi, w))
+        missclass = sum(Y .!= predict(Phi, W)) / n_class
         d∇ = norm(∇E)
-        if d∇ < 1e-12
+        if d∇ < 1e-12 || missclass == 0
             @info "Iter $i: missclass = $missclass, ||∇|| = $d∇"
             break
+        elseif i == max_iter
+            @warn "Max iter reached $i: missclass = $missclass, ||∇|| = $d∇"
         end
     end
-    return w
+    return W
 end
