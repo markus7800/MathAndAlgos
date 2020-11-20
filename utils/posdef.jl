@@ -15,3 +15,12 @@ function make_posdef!(K::AbstractMatrix; chances=10)
     end
     throw(ArgumentError("K is not positive definite."))
 end
+
+function make_symmetric!(K::AbstractMatrix, tol=1e-9)
+    D = LowerTriangular(K - K') / 2
+    if maximum(abs.(D)) > tol
+        error("K is not symmetric within tolerance.")
+    end
+    K .-= D
+    K .+= D'
+end
