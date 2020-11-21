@@ -10,11 +10,15 @@ struct MULTI_LOGR_ML
     λ::Float64
 
     function MULTI_LOGR_ML(X::Matrix, Y::Matrix;
-        basis::Function=x->vcat(1.,x), λ::Float64=0.)
+        basis::Function=x->vcat(1.,x), λ::Float64=0., alg=:NR)
 
         Phi = calc_ϕ(X, basis)
 
-        W = GD(Phi, Y, λ)
+        if alg == :GD
+            W = GD(Phi, Y, λ)
+        elseif alg == :NR
+            W = NewtonRaphson(Phi, Y, λ)
+        end
         return new(X, Y, W, basis, λ)
     end
 end
@@ -70,6 +74,37 @@ function GD(Phi::Matrix, Y::Matrix, λ; η=0.01, max_iter=10^5)
             break
         elseif i == max_iter
             @warn "Max iter reached $i: missclass = $missclass, ||∇|| = $d∇"
+        end
+    end
+    return W
+end
+
+function NewtonRaphson(Phi::Matrix, Y::Matrix, λ; max_iter=10^3)
+    p = size(Phi,2)
+    n_class = size(Y,2)
+    N = p*n_class
+
+    W = ones(p, n_class)
+    ∇∇E = zeros(N, N)
+    for i in 1:max_iter
+        Ŷ = softmax(Phi * W)
+        ∇E = (Phi')*(Ŷ - Y) + λ*W
+        ∇E = reshape(∇E, N)
+
+        for i in 1:n_class, j in 1:n_class
+            R = Diagonal(Ŷ[:,i] .* (Int(i==j) .- Ŷ[:,j]))
+            ∇∇E[p*(i-1)+1 : p*i, p*(j-1)+1 : p*j] .= Phi'R*Phi + λ*I(p)
+        end
+
+        make_symmetric!(∇∇E)
+        make_posdef!(∇∇E)
+        W -= reshape(cholesky(∇∇E) \ ∇E, p, n_class)
+
+        missclass = sum(Y .!= predict(Phi, W)) / n_class
+        d∇ = norm(∇E)
+        if d∇ < 1e-12 || missclass == 0
+            @info "Iter $i: missclass = $missclass, ||∇|| = $d∇"
+            break
         end
     end
     return W
