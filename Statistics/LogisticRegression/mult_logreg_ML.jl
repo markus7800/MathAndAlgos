@@ -39,13 +39,18 @@ end
 
 function predict(Phi::Matrix, W::Matrix)
     P = softmax(Phi * W)
-    maxs = maximum(P, dims=2)
     return Int.(P .== maxs)
 end
 
 function predict(lg::MULTI_LOGR_ML, X_pred)
     Phi = calc_ϕ(X_pred, lg.basis)
     return predict(Phi, lg.W)
+end
+
+function predict_probs(lg::MULTI_LOGR_ML, X_pred)
+    Phi = calc_ϕ(X_pred, lg.basis)
+    P = softmax(Phi * lg.W)
+    vec(maximum(P, dims=2))
 end
 
 function GD(Phi::Matrix, Y::Matrix, λ; η=0.01, max_iter=10^5)

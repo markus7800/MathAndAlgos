@@ -61,12 +61,13 @@ function onecold(Y)
 end
 
 scatter(xs, ys, mc=classification_multi(xs,ys), legend=false)
+savefig("Statistics/LogisticRegression/multiclassproblem.svg")
 
 Y = onehot(classification_multi(xs,ys))
 
 lg = MULTI_LOGR_ML(X, Y)
 
-N = 50
+N = 100
 lin = LinRange(-3,2,N)
 grid = zeros(N^2, 3)
 for (i,(x,y)) in enumerate(Iterators.product(lin, lin))
@@ -74,11 +75,17 @@ for (i,(x,y)) in enumerate(Iterators.product(lin, lin))
 end
 
 grid_pred = onecold(predict(lg, grid))
-scatter(grid[:,1],grid[:,2],mc=grid_pred)
+probs = predict_probs(lg, grid)
+scatter(grid[:,1],grid[:,2],
+    mc=grid_pred, ma=probs,
+    markerstrokecolor = grid_pred,
+    legend=false, ms=2)
+scatter!(xs, ys, mc=classification_multi(xs,ys), legend=false, ms=2)
+savefig("Statistics/LogisticRegression/multiclasssolved.svg")
 
 lg = MULTI_LOGR_ML(hcat(xs,ys), Y)
 
-N = 50
+N = 100
 lin = LinRange(-3,2,N)
 grid = zeros(N^2, 2)
 for (i,(x,y)) in enumerate(Iterators.product(lin, lin))
@@ -86,4 +93,10 @@ for (i,(x,y)) in enumerate(Iterators.product(lin, lin))
 end
 
 grid_pred = onecold(predict(lg, grid))
-scatter(grid[:,1],grid[:,2],mc=grid_pred)
+probs = predict_probs(lg, grid)
+scatter(grid[:,1],grid[:,2],
+    mc=grid_pred, ma=probs,
+    markerstrokecolor = grid_pred,
+    legend=false, ms=2)
+scatter!(xs, ys, mc=classification_multi(xs,ys), legend=false, ms=2)
+savefig("Statistics/LogisticRegression/multiclassnotsolved.svg")
