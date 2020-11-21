@@ -1,4 +1,4 @@
-include("NN.jl")
+include("../NN.jl")
 
 using Flux.Data.MNIST
 using Base.Iterators: partition
