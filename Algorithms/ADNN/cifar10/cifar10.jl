@@ -2,15 +2,15 @@ using Flux
 using Flux: onehotbatch, onecold, logitcrossentropy, throttle, flatten
 import Functors: @functor
 using Metalhead
-using Metalhead: trainimgs
+using Metalhead: trainimgs, valimgs
 using Images: channelview
 using Random
 using Base.Iterators: partition
 using Statistics
 using BSON
-using Plots
 using StatsBase
-
+using Dates
+using Printf
 
 # Function to convert the RGB image to Float32 Arrays
 function getarray(X)
@@ -21,7 +21,7 @@ end
 const μ  = reshape(Float32[0.4914, 0.4822, 0.4465],1,1,3)
 const σ = reshape(Float32[0.2023, 0.1994, 0.2010],1,1,3)
 
-function get_processed_data(;batchsize=128, splitr_ = 0.1, N=40_000)
+function get_processed_data(;batchsize=128, splitr_ = 0.1, N=50_000)
     # Fetching the train and validation data and getting them into proper shape
     X = trainimgs(CIFAR10)
     imgs = [getarray(X[i].img) for i in 1:N] # 50_000 available
@@ -260,7 +260,7 @@ end
 function random_permute_set(train_set; shuffle=true, kw...)
     count = 0
     permuted_set = similar(train_set)
-    N = length(trainset)
+    N = length(train_set)
     # at least shuffle order of batches
     indexes = shuffle ? sample(1:N, N, replace=false) : collect(1:N)
 
@@ -319,24 +319,34 @@ function train(; epochs=8, normalize=false, batchsize=400, permute=true, schedul
         cb = () -> ()
     end
 
-    Flux.@epochs epochs begin
+    @info "Started training at: " * Dates.format(now(), "yyyy/m/d HH:MM")
+    for epoch in 1:epochs
+        @info "Epoch $(epoch):"
+
         if permute
             epoch_set, count, t = random_permute_set(train_set)
-            @info "Randomly permuted $count images in $t seconds."
+            @info @sprintf "\tRandomly permuted %d images in %.2f seconds." count t
         else
             epoch_set = train_set
         end
 
-        v,t, = @timed Flux.train!(loss, params(m), epoch_set, opt, cb=cb)
-        @info "Finished in $(Int(round(t/60))) minutes."
+        v,t_train, = @timed Flux.train!(loss, params(m), epoch_set, opt, cb=cb)
+        @info "\tEpoch finished in $(Int(round(t_train/60))) minutes."
 
-        v,t, = @timed (@info "Accuracy on validation: $(accuracy(val_set..., m))")
-        @info "Validated in $(Int(round(t))) seconds."
+        v,t_val, = @timed (@info "\tAccuracy on validation: $(accuracy(val_set..., m))")
+        @info "\tValidated in $(Int(round(t_val))) seconds."
 
         if schedule_lr
-            @info "Learning rate is at $(opt.eta)"
+            @info @sprintf "\tLearning rate is at %.4f" opt.eta
+        end
+
+        if epoch < epochs
+            t = t_train + t_val
+            ETA = now() + Second(Int(round(t*(epochs-epoch))))
+            @info "\tExpected finishing time: " * Dates.format(ETA, "yyyy/m/d HH:MM")
         end
     end
+    @info "Finished training at: " * Dates.format(now(), "yyyy/m/d HH:MM")
 
     return m
 end
@@ -352,21 +362,19 @@ function test(m; normalize=false)
     @show(accuracy(test_data..., m))
 end
 
-plot_schedule(max_lr=0.01, epochs=, batches=282)
-
-m = train(normalize=true, batchsize=128, epochs=8)
+m = train(normalize=true, batchsize=128, epochs=5)
 @time acc = test(m,normalize=true)
 
 ps = params(m)
 n_params = sum(map(p->prod(size(p)), ps))
-using BSON
-BSON.@save joinpath("Algorithms/ADNN/cifar10/cifar_conv.bson") params=ps
+BSON.@save joinpath("cifar_conv2.bson") params=ps
+@info "Saved model."
 
 # MACBOOK
 # 40 min pro epoch
 # 18s for acc on test -> 1000 imgs
 
-
+#=
 using Plots
 
 test_data = get_test_data()
@@ -414,3 +422,7 @@ m = ResNet9(3,10)
 
 ps = params(m)
 sum(map(p->prod(size(p)), ps))
+
+@time accuracy(val_set..., m)
+
+=#
