@@ -130,6 +130,10 @@ function train(; epochs=8, normalize=false, batchsize=400)
     Random.seed!(1)
     m = ResNet9(3,10)
 
+    m = gpu(m)
+    train_set = gpu.(train_set)
+    val_set = gpu(val_set)
+
     sqnorm(x) = sum(abs2, x)
     L2_penalty(m) = sum(sqnorm, params(m))
     λ = 1f-4
@@ -142,8 +146,8 @@ function train(; epochs=8, normalize=false, batchsize=400)
     Flux.@epochs epochs begin
         v,t, = @timed Flux.train!(loss, params(m), train_set, opt)
         @info "Finished in $(Int(round(t/60))) minutes."
-        v,t, = @timed (@info "Accuracy on validation: $(accuracy(val_set..., m))")
-        @info "Validated in $(Int(round(t))) seconds."
+        #v,t, = @timed (@info "Accuracy on validation: $(accuracy(val_set..., m))")
+        #@info "Validated in $(Int(round(t))) seconds."
     end
 
     return m
@@ -158,6 +162,9 @@ function test(m; normalize=false)
         σ = reshape(Float32[0.2023, 0.1994, 0.2010],1,1,3)
         test_data = (test_data[1] .- μ) ./ σ, test_data[2]
     end
+
+    test_data = gpu(test_data)
+
     # Print the final accuracy
     @show(accuracy(test_data..., m))
 end
