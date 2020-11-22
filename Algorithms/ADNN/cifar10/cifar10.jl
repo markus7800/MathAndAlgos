@@ -25,10 +25,10 @@ function get_processed_data(;batchsize=128, splitr_ = 0.1)
     labels = onehotbatch([X[i].ground_truth.class for i in 1:40000],1:10)
 
     train_pop = Int((1-splitr_)* 40000)
-    train = gpu.([(cat(imgs[i]..., dims = 4), labels[:,i]) for i in partition(1:train_pop, batchsize)])
+    train = [(cat(imgs[i]..., dims = 4), labels[:,i]) for i in partition(1:train_pop, batchsize)]
     valset = collect(train_pop+1:40000)
-    valX = cat(imgs[valset]..., dims = 4) |> gpu
-    valY = labels[:, valset] |> gpu
+    valX = cat(imgs[valset]..., dims = 4)
+    valY = labels[:, valset]
 
     val = (valX,valY)
     return train, val
@@ -40,8 +40,8 @@ function get_test_data()
 
     # CIFAR-10 does not specify a validation set so valimgs fetch the testdata instead of testimgs
     testimgs = [getarray(test[i].img) for i in 1:1000]
-    testY = onehotbatch([test[i].ground_truth.class for i in 1:1000], 1:10) |> gpu
-    testX = cat(testimgs..., dims = 4) |> gpu
+    testY = onehotbatch([test[i].ground_truth.class for i in 1:1000], 1:10)
+    testX = cat(testimgs..., dims = 4)
 
     test = (testX,testY)
     return test
@@ -55,12 +55,13 @@ struct ConvBlock
     mp::MaxPool
     pool::Bool
     σ
-    function ConvBlock(ch::Pair{Int,Int}, size=(3,3), pad=(1,1); pool=false)
-        conv = Conv(size, ch, pad=pad)
-        bn = BatchNorm(ch[2])
-        mp = MaxPool((2,2))
-        return new(conv,bn,mp,pool,relu)
-    end
+end
+
+function ConvBlock(ch::Pair{Int,Int}, size=(3,3), pad=(1,1); pool=false)
+    conv = Conv(size, ch, pad=pad)
+    bn = BatchNorm(ch[2])
+    mp = MaxPool((2,2))
+    return ConvBlock(conv,bn,mp,pool,relu)
 end
 
 function (CB::ConvBlock)(x)
@@ -77,11 +78,12 @@ end
 struct ResBlock
     conv_block_1::ConvBlock
     conv_block_2::ConvBlock
-    function ResBlock(ch::Pair{Int,Pair{Int,Int}})
-        inc, ch2 = ch
-        midc, out = ch2
-        new(ConvBlock(inc=>midc), ConvBlock(midc=>out))
-    end
+end
+
+function ResBlock(ch::Pair{Int,Pair{Int,Int}})
+    inc, ch2 = ch
+    midc, out = ch2
+    ResBlock(ConvBlock(inc=>midc), ConvBlock(midc=>out))
 end
 
 function (RB::ResBlock)(x)
@@ -161,13 +163,18 @@ function test(m; normalize=false)
 end
 
 
-m = train(normalize=true, batchsize=128, epochs=5)
-@time acc = test(m,normalize=true)
+m = train(normalize=true, batchsize=128, epochs=1)
+@time acc = test(m,normalize=true) # 0.686
 
 ps = params(m)
 n_params = sum(map(p->prod(size(p)), ps))
 using BSON
-BSON.@save joinpath("Algorithms/ADNN/cifar10/cifar_conv.bson") params=ps
+BSON.@save joinpath("Algorithms/ADNN/cifar10/cifar_test.bson") model=m
+
+m2 = BSON.load("Algorithms/ADNN/cifar10/cifar_test.bson")[:model]
+
+@time acc = test(m2,normalize=true) # 0.686
+
 
 # MACBOOK
 # 40 min pro epoch
