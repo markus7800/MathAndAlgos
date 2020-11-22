@@ -27,7 +27,7 @@ end
 const CIFAR10_MEANS  = reshape(Float32[0.4914, 0.4822, 0.4465],1,1,3)
 const CIFAR10_SDS = reshape(Float32[0.2023, 0.1994, 0.2010],1,1,3)
 
-function get_processed_data(;batchsize=128, splitr_ = 0.1, N=50_000)
+function get_processed_data(;batchsize=128, splitr_ = 0.1, N=40_000)
     # Fetching the train and validation data and getting them into proper shape
     X = trainimgs(CIFAR10)
     imgs = [getarray(X[i].img) for i in 1:N] # 50_000 available
@@ -45,7 +45,7 @@ function get_processed_data(;batchsize=128, splitr_ = 0.1, N=50_000)
     return train, val
 end
 
-function get_test_data(N=10_000)
+function get_test_data(N=1_000)
     # Fetch the test data from Metalhead and get it into proper shape.
     test = valimgs(CIFAR10)
 
@@ -284,12 +284,16 @@ function random_permute_set(train_set; shuffle=true, kw...)
 end
 
 # x is one big batch
-function accuracy(x, y, m; batchsize=100)
+function accuracy(x, y, m; batchsize=100, enable_gpu=false)
     N = size(x,4)
     s = 0
     # batch to decrease ram pressure on macbook
     for is in partition(1:N, batchsize)
-        s += sum(onecold(cpu(m(gpu(x[:,:,:,is]))), 1:10) .== onecold(cpu(y[is]), 1:10))
+        if enable_gpu
+            s += sum(onecold(cpu(m(gpu(x[:,:,:,is]))), 1:10) .== onecold(cpu(y[is]), 1:10))
+        else
+            s += sum(onecold(cpu(m(x[:,:,:,is])), 1:10) .== onecold(cpu(y[is]), 1:10))
+        end
     end
     return s/N
 end
@@ -305,11 +309,6 @@ function train(; epochs=8, normalize=false, batchsize=400, permute=true, schedul
         map!(x -> ((x[1] .- CIFAR10_MEANS) ./ CIFAR10_SDS, x[2]), train_set, train_set)
         val_set = (val_set[1] .- CIFAR10_MEANS) ./ CIFAR10_SDS, val_set[2]
     end
-
-    # if enable_gpu
-    #     # leave train set on cpu for preprocessing
-    #     val_set = gpu(val_set)
-    # end
 
     @info("Constructing Model.")
 
@@ -359,7 +358,7 @@ function train(; epochs=8, normalize=false, batchsize=400, permute=true, schedul
         @info "\tEpoch finished in $(Int(round(t_train/60))) minutes."
 
         v,t_val, = @timed if enable_gpu
-            acc = accuracy(val_set..., m, batchsize=1000)
+            acc = accuracy(val_set..., m, batchsize=1000, enable_gpu=true)
         else
             acc = accuracy(val_set..., m)
         end
@@ -383,18 +382,32 @@ function train(; epochs=8, normalize=false, batchsize=400, permute=true, schedul
 end
 
 
-function test(m; normalize=false)
+function test(m; normalize=false, enable_gpu=false)
     test_data = get_test_data()
 
     if normalize
         test_data = (test_data[1] .- CIFAR10_MEANS) ./ CIFAR10_SDS, test_data[2]
     end
     # Print the final accuracy
-    @show(accuracy(test_data..., m))
+    @show(accuracy(test_data..., m, enable_gpu=enable_gpu))
 end
 
-m = train(normalize=true, batchsize=400, epochs=15, enable_gpu=true)
-@time acc = test(m,normalize=true)
+m = train(normalize=true, batchsize=128, epochs=2,
+    enable_gpu=false, permute=false, schedule_lr=false)
+
+@time acc = test(cpu(m),normalize=true)
+@time acc = test(gpu(m),normalize=true, enable_gpu=true)
+
+using CUDA
+
+d = gpu(Conv((10,10), 2=>3))
+d = fmap(CUDA.cu, Conv((10,10), 2=>3))
+
+d = gpu(ConvBlock(4=>4))
+typeof(d.conv.weight
+
+d = gpu(ResBlock(4=>4=>4))
+typeof(d.conv_block_1.conv.weight)
 
 ps = params(m)
 n_params = sum(map(p->prod(size(p)), ps))
