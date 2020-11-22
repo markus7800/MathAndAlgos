@@ -7,6 +7,7 @@ using Images: channelview
 using Random
 using Base.Iterators: partition
 using Statistics
+using Bison
 
 
 
@@ -139,7 +140,7 @@ function train(; epochs=8, normalize=false, batchsize=400)
     Flux.@epochs epochs begin
         v,t, = @timed Flux.train!(loss, params(m), train_set, opt)
         @info "Finished in $(Int(round(t/60))) minutes."
-        v,t, = @timed show(accuracy(val_set..., m))
+        v,t, = @timed (@info "Accuracy on validation: $(accuracy(val_set..., m))")
         @info "Validated in $(Int(round(t))) seconds."
     end
 
@@ -147,20 +148,30 @@ function train(; epochs=8, normalize=false, batchsize=400)
 end
 
 
-function test(m)
+function test(m; normalize=false)
     test_data = get_test_data()
 
+    if normalize
+        μ  = reshape(Float32[0.4914, 0.4822, 0.4465],1,1,3)
+        σ = reshape(Float32[0.2023, 0.1994, 0.2010],1,1,3)
+        test_data = (test_data[1] .- μ) ./ σ, test_data[2]
+    end
     # Print the final accuracy
     @show(accuracy(test_data..., m))
 end
 
 
-m = train(normalize=true, batchsize=128)
-@time test(m)
+m = train(normalize=true, batchsize=128, epochs=5)
+@time acc = test(m,normalize=true)
+
+ps = params(m)
+n_params = sum(map(p->prod(size(p)), ps))
+using BSON
+BSON.@save joinpath("Algorithms/ADNN/cifar10/cifar_conv.bson") params=ps
 
 # MACBOOK
-# 18 min pro epoch
-# 15s for acc on test -> 1000 imgs
+# 40 min pro epoch
+# 18s for acc on test -> 1000 imgs
 
 
 using Plots
@@ -191,3 +202,9 @@ plot(t->(lr_max-lr0)*t / cos(π*t) + lr0, 0, 1)
 train_set, val_set = get_processed_data(batchsize=128)
 
 trainimgs(CIFAR10)
+
+Random.seed!(1)
+m = ResNet9(3,10)
+
+ps = params(m)
+sum(map(p->prod(size(p)), ps))
