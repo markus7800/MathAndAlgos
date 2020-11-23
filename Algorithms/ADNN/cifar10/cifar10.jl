@@ -137,7 +137,7 @@ end
 #     return s/N
 # end
 
-function accuracy(x, y, m) = mean(onecold(cpu(m(x)), 1:10) .== onecold(cpu(y), 1:10))
+accuracy(x, y, m) = mean(onecold(cpu(m(x)), 1:10) .== onecold(cpu(y), 1:10))
 
 function train(; epochs=8, normalize=false, batchsize=400, permute=true, schedule_lr=true, enable_gpu=false)
     Random.seed!(1)
@@ -248,8 +248,8 @@ function test(m; normalize=false, enable_gpu=false)
     @show(accuracy(test_data..., m, enable_gpu=enable_gpu))
 end
 
-m = train(normalize=true, batchsize=128, epochs=2,
-    enable_gpu=false, permute=false, schedule_lr=false)
+m = train(normalize=true, batchsize=400, epochs=15,
+    enable_gpu=true, permute=false, schedule_lr=false)
 
 @time acc = test(cpu(m),normalize=true)
 @time acc = test(gpu(m),normalize=true, enable_gpu=true)
