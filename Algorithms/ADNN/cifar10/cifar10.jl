@@ -7,7 +7,7 @@ using Images: channelview
 using Random
 using Base.Iterators: partition
 using Statistics
-using Bison
+using BSON
 
 
 
@@ -116,7 +116,7 @@ function train(; epochs=8, normalize=false, batchsize=400)
 
     @info("Load training data")
     train_set, val_set = get_processed_data(batchsize=batchsize)
-    test_data = get_test_data()
+    test_set = get_test_data()
 
     if normalize
         @info("Normalizing training data.")
@@ -124,7 +124,7 @@ function train(; epochs=8, normalize=false, batchsize=400)
         σ = reshape(Float32[0.2023, 0.1994, 0.2010],1,1,3)
         map!(x -> ((x[1] .- μ) ./ σ, x[2]), train_set, train_set)
         val_set = (val_set[1] .- μ) ./ σ, val_set[2]
-        test_data = (test_data[1] .- μ) ./ σ, test_data[2]
+        test_set = (test_set[1] .- μ) ./ σ, test_set[2]
     end
     display(typeof(train_set[1][1]))
     display(typeof(val_set[1]))
@@ -177,14 +177,15 @@ end
 m = train(normalize=true, batchsize=400, epochs=15)
 @time acc = test(m,normalize=true) # 0.834
 
+
+m_cpu = cpu(m)
 ps = params(m)
 n_params = sum(map(p->prod(size(p)), ps))
-using BSON
-BSON.@save joinpath("Algorithms/ADNN/cifar10/cifar_15_400.bson") model=m
+BSON.@save joinpath("Algorithms/ADNN/cifar10/cifar_15_400.bson") model=m_cpu
 
 using CUDA
 m2 = BSON.load("Algorithms/ADNN/cifar10/cifar_15_400.bson")[:model]
-@time acc = test(m2,normalize=true) # 0.834
+@time acc = test(gpu(m2),normalize=true) # 0.834
 
 
 # MACBOOK
