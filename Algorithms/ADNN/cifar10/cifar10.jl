@@ -12,9 +12,8 @@ using StatsBase
 using Dates
 using Printf
 
-# include("lr_schedular.jl")
-# include("random_permute.jl")
-# include("show.jl")
+include("lr_schedular.jl")
+include("random_permute.jl")
 
 
 # no need - just to check
@@ -33,7 +32,7 @@ end
 const CIFAR10_MEANS  = reshape(Float32[0.4914, 0.4822, 0.4465],1,1,3)
 const CIFAR10_SDS = reshape(Float32[0.2023, 0.1994, 0.2010],1,1,3)
 
-function get_processed_data(;batchsize=128, splitr_ = 0.1, N=40_000)
+function get_processed_data(;batchsize=128, splitr_ = 0.1, N=50_000)
     # Fetching the train and validation data and getting them into proper shape
     X = trainimgs(CIFAR10)
     imgs = [getarray(X[i].img) for i in 1:N] # 50_000 available
@@ -43,24 +42,20 @@ function get_processed_data(;batchsize=128, splitr_ = 0.1, N=40_000)
 
     train_pop = Int((1-splitr_) * N)
     train = [(cat(imgs[i]..., dims = 4), labels[:,i]) for i in partition(1:train_pop, batchsize)]
-    valset = collect(train_pop+1:N)
-    valX = cat(imgs[valset]..., dims = 4)
-    valY = labels[:, valset]
+    val = [(cat(imgs[i]..., dims=4), labels[:,i]) for i in partition(train_pop+1:N, batchsize)]
 
-    val = (valX,valY)
     return train, val
 end
 
-function get_test_data(N=1_000)
+function get_test_data(;N=1_000, batchsize=400)
     # Fetch the test data from Metalhead and get it into proper shape.
     test = valimgs(CIFAR10)
 
     # CIFAR-10 does not specify a validation set so valimgs fetch the testdata instead of testimgs
     testimgs = [getarray(test[i].img) for i in 1:N] # 10_000 available
-    testY = onehotbatch([test[i].ground_truth.class for i in 1:N], 1:10)
-    testX = cat(testimgs..., dims = 4)
+    labels = onehotbatch([test[i].ground_truth.class for i in 1:N], 1:10)
+    test = [(cat(testimgs[i]..., dims = 4), testY[:,i]) for i in partition(1:N, batchsize)]
 
-    test = (testX,testY)
     return test
 end
 
@@ -124,16 +119,28 @@ function ResNet9(in_channels, n_class)
     return Chain(prep, conv1, res1, conv2, conv3, res2, classifier...)
 end
 
+include("show.jl")
 
 
 # x is one big batch
-function accuracy(x, y, m; batchsize=1000, enable_gpu=false)
-    N = size(x,4)
+# function accuracy(x, y, m; batchsize=1000, enable_gpu=false)
+#     N = size(x,4)
+#     s = 0
+#     _pu = enable_gpu ? gpu : cpu
+#     # batch to decrease ram demand
+#     for is in partition(1:N, batchsize)
+#         s += sum(onecold(cpu(m(_pu(x[:,:,:,is]))), 1:10) .== onecold(cpu(y[:,is]), 1:10))
+#     end
+#     return s/N
+# end
+
+# X is batched (list of tuples), ram friendly
+function accuracy3(X, m)
+    N = sum(map(b -> size(b[1],4), X))
+    println("N: ", N)
     s = 0
-    _pu = enable_gpu ? gpu : cpu
-    # batch to decrease ram demand
-    for is in partition(1:N, batchsize)
-        s += sum(onecold(cpu(m(_pu(x[:,:,:,is]))), 1:10) .== onecold(cpu(y[:,is]), 1:10))
+    for batch in X
+        s += sum(onecold(cpu(m(batch[1])), 1:10) .== onecold(cpu(batch[2]), 1:10))
     end
     return s/N
 end
@@ -189,44 +196,44 @@ function train(; epochs=8, normalize=false, batchsize=400, permute=true, schedul
     @info "Started training at: " * Dates.format(now(), "yyyy/m/d HH:MM")
     for epoch in 1:epochs
         @info "Epoch $(epoch):"
-        v,t, = @timed Flux.train!(loss, params(m), train_set, opt)
-        @info "Finished in $(Int(round(t/60))) minutes."
-        v,t, = @timed (@info "Accuracy on validation: $(accuracy(test_set..., m))")
-        @info "Validated in $t seconds."
+        # v,t, = @timed Flux.train!(loss, params(m), train_set, opt)
+        # @info "Finished in $(Int(round(t/60))) minutes."
+        # v,t, = @timed (@info "Accuracy on validation: $(accuracy(test_set..., m))")
+        # @info "Validated in $t seconds."
 
-        # if permute
-        #     # do preprocessing on CPU
-        #     epoch_set, count, t = random_permute_set(train_set)
-        #     @info @sprintf "\tRandomly permuted %d images in %.2f seconds." count t
-        # else
-        #     epoch_set = train_set
-        # end
-        #
-        # if enable_gpu
-        #     epoch_set = gpu.(epoch_set)
-        # end
-        #
-        # v,t_train, = @timed Flux.train!(loss, params(m), epoch_set, opt)
-        # @info "\tEpoch finished in $(Int(round(t_train/60))) minutes."
-        #
-        # v,t_val, = @timed if enable_gpu
-        #     acc = accuracy(val_set..., m, batchsize=1000)
-        # else
-        #     acc = accuracy(val_set..., m)
-        # end
-        #
-        # @info "\tAccuracy on validation: $acc"
-        # @info "\tValidated in $(Int(round(t_val))) seconds."
-        #
-        # if schedule_lr
-        #     @info @sprintf "\tLearning rate is at %.4f" opt.eta
-        # end
-        #
-        # if epoch < epochs
-        #     t = t_train + t_val
-        #     ETA = now() + Second(Int(round(t*(epochs-epoch))))
-        #     @info "\tExpected finishing time: " * Dates.format(ETA, "yyyy/m/d HH:MM")
-        # end
+        if permute
+            # do preprocessing on CPU
+            epoch_set, count, t = random_permute_set(train_set)
+            @info @sprintf "\tRandomly permuted %d images in %.2f seconds." count t
+        else
+            epoch_set = train_set
+        end
+
+        if enable_gpu
+            epoch_set = gpu.(epoch_set)
+        end
+
+        v,t_train, = @timed Flux.train!(loss, params(m), epoch_set, opt)
+        @info "\tEpoch finished in $(Int(round(t_train/60))) minutes."
+
+        v,t_val, = @timed if enable_gpu
+            acc = accuracy(val_set..., m, batchsize=1000, enable_gpu = true)
+        else
+            acc = accuracy(val_set..., m)
+        end
+
+        @info "\tAccuracy on validation: $acc"
+        @info "\tValidated in $(Int(round(t_val))) seconds."
+
+        if schedule_lr
+            @info @sprintf "\tLearning rate is at %.4f" opt.eta
+        end
+
+        if epoch < epochs
+            t = t_train + t_val
+            ETA = now() + Second(Int(round(t*(epochs-epoch))))
+            @info "\tExpected finishing time: " * Dates.format(ETA, "yyyy/m/d HH:MM")
+        end
     end
     @info "Finished training at: " * Dates.format(now(), "yyyy/m/d HH:MM")
 
@@ -247,11 +254,25 @@ function test(m; normalize=false, enable_gpu=false, N=1_000)
     @info("Accuracy $acc evaluated in $t seconds.")
 end
 
-m = train(normalize=true, batchsize=400, epochs=15,
+m = train(normalize=true, batchsize=400, epochs=5,
     enable_gpu=true, permute=false, schedule_lr=false)
 
 @time acc = test(cpu(m),normalize=true, enable_gpu=false) # 14s
 @time acc = test(m,normalize=true, enable_gpu=true) # 1.3
+
+train_set_, val_set_ = get_processed_data(;batchsize=128)
+map!(x -> ((x[1] .- CIFAR10_MEANS) ./ CIFAR10_SDS, x[2]), train_set_, train_set_)
+val_set_ = ((val_set_[1] .- CIFAR10_MEANS) ./ CIFAR10_SDS, val_set_[2])
+accuracy3(gpu.(train_set_), m)
+accuracy(val_set_..., m, enable_gpu=true)
+
+
+train_set_2, val_set_2 = get_processed_data(;batchsize=128)
+map!(x -> ((x[1] .- CIFAR10_MEANS) ./ CIFAR10_SDS, x[2]), train_set_2, train_set_2)
+map!(x -> ((x[1] .- CIFAR10_MEANS) ./ CIFAR10_SDS, x[2]), val_set_2, val_set_2)
+accuracy3(gpu.(train_set_2), m)
+accuracy3(gpu.(val_set_2), m)
+
 
 using CUDA
 
