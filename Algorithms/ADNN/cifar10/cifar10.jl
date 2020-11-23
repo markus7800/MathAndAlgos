@@ -67,10 +67,11 @@ end
 function (CB::ConvBlock)(x)
     x = CB.conv(x)
     x = CB.bn(x)
+    x = CB.σ.(x)
     if CB.pool
         x = CB.mp(x)
     end
-    return CB.σ.(x)
+    return x
 end
 
 @functor ConvBlock
@@ -113,6 +114,7 @@ end
 accuracy(x, y, m) = mean(onecold(cpu(m(x)), 1:10) .== onecold(cpu(y), 1:10))
 
 function train(; epochs=8, normalize=false, batchsize=400)
+    Random.seed!(1)
 
     @info("Load training data")
     train_set, val_set = get_processed_data(batchsize=batchsize)
