@@ -116,12 +116,15 @@ function train(; epochs=8, normalize=false, batchsize=400)
 
     @info("Load training data")
     train_set, val_set = get_processed_data(batchsize=batchsize)
+    test_data = get_test_data()
+
     if normalize
         @info("Normalizing training data.")
         μ  = reshape(Float32[0.4914, 0.4822, 0.4465],1,1,3)
         σ = reshape(Float32[0.2023, 0.1994, 0.2010],1,1,3)
         map!(x -> ((x[1] .- μ) ./ σ, x[2]), train_set, train_set)
         val_set = (val_set[1] .- μ) ./ σ, val_set[2]
+        test_data = (test_data[1] .- μ) ./ σ, test_data[2]
     end
     display(typeof(train_set[1][1]))
     display(typeof(val_set[1]))
@@ -133,6 +136,7 @@ function train(; epochs=8, normalize=false, batchsize=400)
     m = gpu(m)
     train_set = gpu.(train_set)
     val_set = gpu(val_set)
+    test_set = gpu(test_set)
 
     sqnorm(x) = sum(abs2, x)
     L2_penalty(m) = sum(sqnorm, params(m))
@@ -146,8 +150,8 @@ function train(; epochs=8, normalize=false, batchsize=400)
     Flux.@epochs epochs begin
         v,t, = @timed Flux.train!(loss, params(m), train_set, opt)
         @info "Finished in $(Int(round(t/60))) minutes."
-        #v,t, = @timed (@info "Accuracy on validation: $(accuracy(val_set..., m))")
-        #@info "Validated in $(Int(round(t))) seconds."
+        v,t, = @timed (@info "Accuracy on validation: $(accuracy(test_set..., m))")
+        @info "Validated in $(Int(round(t))) seconds."
     end
 
     return m
@@ -170,17 +174,17 @@ function test(m; normalize=false)
 end
 
 
-m = train(normalize=true, batchsize=128, epochs=1)
-@time acc = test(m,normalize=true) # 0.686
+m = train(normalize=true, batchsize=400, epochs=15)
+@time acc = test(m,normalize=true) # 0.834
 
 ps = params(m)
 n_params = sum(map(p->prod(size(p)), ps))
 using BSON
-BSON.@save joinpath("Algorithms/ADNN/cifar10/cifar_test.bson") model=m
+BSON.@save joinpath("Algorithms/ADNN/cifar10/cifar_15_400.bson") model=m
 
-m2 = BSON.load("Algorithms/ADNN/cifar10/cifar_test.bson")[:model]
-
-@time acc = test(m2,normalize=true) # 0.686
+using CUDA
+m2 = BSON.load("Algorithms/ADNN/cifar10/cifar_15_400.bson")[:model]
+@time acc = test(m2,normalize=true) # 0.834
 
 
 # MACBOOK
