@@ -127,17 +127,16 @@ end
 
 
 # x is one big batch
-# function accuracy(x, y, m; batchsize=100)
-#     N = size(x,4)
-#     s = 0
-#     # batch to decrease ram demand
-#     for is in partition(1:N, batchsize)
-#         s += sum(onecold(cpu(m(gpu(x[:,:,:,is]))), 1:10) .== onecold(cpu(y[is]), 1:10))
-#     end
-#     return s/N
-# end
-
-accuracy(x, y, m) = mean(onecold(cpu(m(x)), 1:10) .== onecold(cpu(y), 1:10))
+function accuracy(x, y, m; batchsize=1000, enable_gpu=false)
+    N = size(x,4)
+    s = 0
+    _pu = enable_gpu ? gpu : cpu
+    # batch to decrease ram demand
+    for is in partition(1:N, batchsize)
+        s += sum(onecold(cpu(m(_pu(x[:,:,:,is]))), 1:10) .== onecold(cpu(y[:,is]), 1:10))
+    end
+    return s/N
+end
 
 function train(; epochs=8, normalize=false, batchsize=400, permute=true, schedule_lr=true, enable_gpu=false)
     Random.seed!(1)
@@ -235,24 +234,24 @@ function train(; epochs=8, normalize=false, batchsize=400, permute=true, schedul
 end
 
 
-function test(m; normalize=false, enable_gpu=false)
-    test_data = get_test_data()
+function test(m; normalize=false, enable_gpu=false, N=1_000)
+    test_data = get_test_data(N)
+    @info("Test data loaded.")
 
     if normalize
         test_data = (test_data[1] .- CIFAR10_MEANS) ./ CIFAR10_SDS, test_data[2]
     end
 
-    test_data = gpu(test_data)
-
     # Print the final accuracy
-    @show(accuracy(test_data..., m, enable_gpu=enable_gpu))
+    acc,t = @timed accuracy(test_data..., m, enable_gpu=enable_gpu)
+    @info("Accuracy $acc evaluated in $t seconds.")
 end
 
 m = train(normalize=true, batchsize=400, epochs=15,
     enable_gpu=true, permute=false, schedule_lr=false)
 
-@time acc = test(cpu(m),normalize=true)
-@time acc = test(gpu(m),normalize=true, enable_gpu=true)
+@time acc = test(cpu(m),normalize=true, enable_gpu=false) # 14s
+@time acc = test(m,normalize=true, enable_gpu=true) # 1.3
 
 using CUDA
 
