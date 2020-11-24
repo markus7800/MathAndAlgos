@@ -243,10 +243,68 @@ m, acc_trains, acc_vals = train(normalize=true, batchsize=400, epochs=30,
 
 m2 = BSON.load("Algorithms/ADNN/cifar10/cifar10_resnet9.bson")[:model]
 m2 = gpu(m2)
-@time acc = test(m2, normalize=true, enable_gpu=true)
+@time test(m2, normalize=true, enable_gpu=true)
 
 using Plots
 plot(acc_trains, label="Training", ylabel="Accuracy", xlabel="Epoch", title="Cifar10 - Resnet9");
 plot!(acc_vals, label="Validation", legend=:topleft)
 savefig("Algorithms/ADNN/cifar10/accuracy_resnet_9.pdf")
 savefig("Algorithms/ADNN/cifar10/accuracy_resnet_9.svg")
+
+# using Images
+function img_from_float(X)
+    n, m, = size(X)
+    img = Array{RGB}(undef, n, m)
+    for i in 1:n, j in 1:m
+        img[i,j] = RGB((X[i,j,:])...)
+    end
+    img
+end
+
+test_set = get_test_data(N=10_000, batchsize=100)
+test_set_normed = map(x -> ((x[1] .- CIFAR10_MEANS) ./ CIFAR10_SDS, x[2]), test_set)
+pred = map(b -> m2(b[1]), test_set_normed)
+pred_ps = cat(softmax.(pred)..., dims=2)
+pred_class = onecold(pred_ps, 1:10)
+true_class = vcat(map(b -> onecold(b[2], 1:10), test_set_normed)...)
+
+sum(pred_class .== true_class)
+wronga = findall(pred_class .!= true_class)
+righta = findall(pred_class .== true_class)
+
+test_set_complete = Array{Float32}(undef, 32, 32, 3, 10_000)
+for (i,is) in enumerate(partition(1:10_000, 100))
+    global test_set_complete[:,:,:,is] = test_set[i][1]
+end
+
+classes = ["airplane", "automobile", "bird", "cat", "deer",
+    "dog", "frog", "horse", "ship", "truck"]
+
+function plot_prediction(i)
+    img = img_from_float(test_set_complete[:,:,:,i])
+    p = plot(img, xaxis=nothing, yaxis=nothing, border=:none)
+    xlabel!(classes[true_class[i]])
+    c = pred_class[i]
+    annotate!(16, -2, @sprintf "%s (%.2f %%)" classes[c] (pred_ps[c,i]*100))
+    p2 = bar(reverse(pred_ps[:,i]), orientation=:horizontal, legend=false)
+    xlims!((0,1.))
+    yticks!((1:10, reverse(classes)))
+    plot(p,p2)
+end
+
+function make_anim(set)
+    anim = Animation()
+    @progress for i in set
+        frame(anim, plot_prediction(i))
+    end
+    return anim
+end
+
+wronga_anim = make_anim(sample(wronga,200))
+#gif(wronga_anim, "wrong_cifar10.gif", fps=1)
+mp4(wronga_anim, "wrong_cifar10.mp4", fps=1)
+
+
+righta_anim = make_anim(sample(righta, 200))
+#gif(righta_anim, "wrong_cifar10.gif", fps=1)
+mp4(righta_anim, "right_cifar10.mp4", fps=1)
