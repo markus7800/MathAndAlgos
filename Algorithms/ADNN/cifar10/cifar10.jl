@@ -236,7 +236,7 @@ function test(m; normalize=false, enable_gpu=false, N=10_000, batchsize=128)
     @info("Accuracy $acc evaluated in $t seconds.")
 end
 
-m, acc_trains, acc_vals = train(normalize=true, batchsize=400, epochs=15,
+m, acc_trains, acc_vals = train(normalize=true, batchsize=400, epochs=30,
     enable_gpu=true, permute=true, schedule_lr=true)
 
 @time acc = test(m, normalize=true, enable_gpu=true)
