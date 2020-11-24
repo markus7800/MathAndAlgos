@@ -124,7 +124,6 @@ include("show.jl")
 # X is batched (list of tuples), ram friendly
 function accuracy(X, m)
     N = sum(map(b -> size(b[1],4), X))
-    println("N: ", N)
     s = 0
     @progress for batch in X
         s += sum(onecold(cpu(m(batch[1])), 1:10) .== onecold(cpu(batch[2]), 1:10))
@@ -198,16 +197,16 @@ function train(; epochs=8, normalize=false, batchsize=400, λ = 1f-4,
         @info "\tEpoch finished in $(Int(round(t_epoch/60))) minutes."
 
         acc_train, t_train, = @timed accuracy(epoch_set, m)
-        @info @sprintf "\tAccuracy on train: %.4f (%.2f second)s." acc_train t_train
+        @info @sprintf "\tAccuracy on train: %.4f (%.2f seconds)." acc_train t_train
         push!(acc_trains, acc_train)
 
         acc_val, t_val, = @timed accuracy(val_set, m)
-        @info @sprintf "\tAccuracy on validation: %.4f (%.2f second)s." acc_val t_val
+        @info @sprintf "\tAccuracy on validation: %.4f (%.2f seconds)." acc_val t_val
         push!(acc_vals, acc_val)
         if acc_val > best_acc_val
             best_acc_val = acc_val
             BSON.@save "Algorithms/ADNN/cifar10/temp.bson" model=cpu(m)
-            @info "\tBest accuracy reaced. Model saved."
+            @info "\tBest accuracy so far. Model saved."
         end
 
         if schedule_lr
@@ -233,11 +232,21 @@ function test(m; normalize=false, enable_gpu=false, N=10_000, batchsize=128)
     end
 
     # Print the final accuracy
-    acc,t = @timed accuracy3(test_data, m)
+    acc,t = @timed accuracy(test_data, m)
     @info("Accuracy $acc evaluated in $t seconds.")
 end
 
-m, acc_trains, acc_vals = train(normalize=true, batchsize=400, epochs=5,
-    enable_gpu=true, permute=false, schedule_lr=false)
+m, acc_trains, acc_vals = train(normalize=true, batchsize=400, epochs=15,
+    enable_gpu=true, permute=true, schedule_lr=true)
 
 @time acc = test(m, normalize=true, enable_gpu=true)
+
+m2 = BSON.load("Algorithms/ADNN/cifar10/cifar10_resnet9.bson")[:model]
+m2 = gpu(m2)
+@time acc = test(m2, normalize=true, enable_gpu=true)
+
+using Plots
+plot(acc_trains, label="Training", ylabel="Accuracy", xlabel="Epoch", title="Cifar10 - Resnet9");
+plot!(acc_vals, label="Validation", legend=:topleft)
+savefig("Algorithms/ADNN/cifar10/accuracy_resnet_9.pdf")
+savefig("Algorithms/ADNN/cifar10/accuracy_resnet_9.svg")
