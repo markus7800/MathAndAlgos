@@ -292,6 +292,36 @@ function plot_prediction(i)
     plot(p,p2)
 end
 
+function plot_classification(set)
+    size = 32
+    pad = 4
+    max_count = maximum(StatsBase.counts(pred_class[set]))
+    p = plot(
+        xlims=(-100, max_count*(size+pad)),
+        size=((max_count*(size+pad)+100)*2, (10*(size+pad) + 100)*2),
+        xaxis=false, yaxis=false, border=:none)
+
+    counts = zeros(Int, 10)
+
+    for c in 1:10
+        y = (c-1)*(size+pad)
+        annotate!(-75, y+size/2, classes[c])
+    end
+
+    @progress for j in set
+        img = img_from_float(test_set_complete[:,:,:,j])
+        c = pred_class[j]
+        y = (c-1)*(size+pad)
+
+        i = counts[c]
+        x = (i-1)*(size+pad)
+        plot!(x:x+size, y:y+size, img)
+
+        counts[c] += 1
+    end
+    p
+end
+
 function make_anim(set)
     anim = Animation()
     @progress for i in set
@@ -299,6 +329,8 @@ function make_anim(set)
     end
     return anim
 end
+
+
 
 wronga_anim = make_anim(sample(wronga,200))
 #gif(wronga_anim, "wrong_cifar10.gif", fps=1)
@@ -308,3 +340,18 @@ mp4(wronga_anim, "wrong_cifar10.mp4", fps=1)
 righta_anim = make_anim(sample(righta, 200))
 #gif(righta_anim, "wrong_cifar10.gif", fps=1)
 mp4(righta_anim, "right_cifar10.mp4", fps=1)
+
+plot_prediction(1)
+
+img = img_from_float(test_set_complete[:,:,:,i])
+
+
+Random.seed!(1)
+wronga_sub = vcat([sample(wronga[pred_class[wronga] .== i], 10, replace=false) for i in 1:10]...)
+plot_classification(wronga_sub)
+savefig("wronga100.png")
+
+Random.seed!(1)
+righta_sub = vcat([sample(righta[pred_class[righta] .== i], 10, replace=false) for i in 1:10]...)
+plot_classification(righta_sub)
+savefig("righta100.png")
