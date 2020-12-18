@@ -58,7 +58,7 @@ function maximisation(EM::GaussianMixtureEM, ps::AbstractMatrix, θ_old)
     N, D = size(X)
     K = GMEM.K
 
-    Ns = sum(ps, dims=1)
+    Ns = vec(sum(ps, dims=1))
 
     πs_new = Ns ./ N
 
@@ -78,6 +78,7 @@ function maximisation(EM::GaussianMixtureEM, ps::AbstractMatrix, θ_old)
     return πs_new, μ_new, Σ_new
 end
 
+# not probability for continuous pdf
 function log_likelihood(EM::GaussianMixtureEM, θ)
     πs, μ, Σ = θ
     X = GMEM.X
@@ -88,6 +89,7 @@ function log_likelihood(EM::GaussianMixtureEM, θ)
                 )
             for n in 1:N)
 end
+
 
 using Plots
 using Random
@@ -139,6 +141,7 @@ B = randn(2,2); A[:,:,3] = B'B
 Θ_0 = (fill(1/K, K), randn(2,K), A)
 
 πs_est, μ_est, Σ_est = solve(GMEM, Θ_0)
+log_likelihood_1(GMEM, (πs_est, μ_est, Σ_est))
 
 pdf_est(x, y) = sum(πs_est[k] * pdf(MvNormal(μ_est[:,k], Σ_est[:,:,k]), [x,y]) for k in 1:K)
 contour(LinRange(0,1,100), LinRange(0,1,100), pdf_est)
@@ -151,3 +154,101 @@ contour(LinRange(0,1,100), LinRange(0,1,100), pdf_est_1)
 contour!(LinRange(0,1,100), LinRange(0,1,100), pdf_est_2)
 contour!(LinRange(0,1,100), LinRange(0,1,100), pdf_est_3)
 scatter!(X[:,1], X[:,2], mc=ks, ms=2)
+
+
+mutable struct BernoulliMixtureEM <: ExpectationMaximation
+    X::AbstractArray
+    K::Int
+end
+
+
+function expectation(BMEM::BernoulliMixtureEM, θ_old)::Array{Float64}
+    πs, μs = θ_old
+    X = BMEM.X
+    N = length(X)
+    K = BMEM.K
+
+    # log_ps = Array{Float64}(undef, N, K) # responsibilities
+    ps = Array{Float64}(undef, N, K) # responsibilities
+
+
+    for n in 1:N, k in 1:K
+        p = 0.
+        for (x, μ) in zip(X[n], μs[k])
+            p *= pdf(Bernoulli(μ), x)
+        end
+        # log_ps[n,k] = p
+        ps[n,k] = πs[k] * p + 1e6
+    end
+    # log_ps .-= log(sum(exp.(log_ps), dims=2))
+    ps ./= (sum(ps, dims=2))
+    return ps
+end
+
+function maximisation(EM::BernoulliMixtureEM, ps::AbstractMatrix, θ_old)
+    πs, μs = θ_old
+    X = BMEM.X
+    N = length(X)
+    K = BMEM.K
+
+    Ns = vec(sum(ps, dims=1))
+
+    πs_new = Ns ./ N
+
+    μs_new = similar(μs)
+    for k in 1:K
+        μs_new[k] = sum(X[n]*ps[n,k] for n in 1:N) / Ns[k]
+    end
+    return πs_new, μs_new
+end
+
+function log_likelihood(EM::BernoulliMixtureEM, θ)
+    πs, μs = θ
+    X = BMEM.X
+    N = length(X)
+    K = BMEM.K
+    display(μs)
+
+    px = Array{Float64}(undef, N, K)
+    for n in 1:N, k in 1:K
+        p = 0.
+        for (x, μ) in zip(X[n], μs[k])
+            p *= pdf(Bernoulli(μ), x)
+        end
+        px[n,k] = p
+    end
+
+    return sum(log(
+                sum(πs[k] * px[n,k] for k in 1:K)
+                )
+            for n in 1:N)
+end
+
+K = 2
+μs_true = [
+    [0.1, 0.5, 0., 0., 0.9],
+    [0.9, 0.5, 0.1, 0.5, 0.1]
+]
+
+πs_true = [0.4, 0.6]
+
+N = 500
+X = Array{Vector{Int}}(undef, N)
+
+Random.seed!(1)
+for n in 1:N
+    k = sample(1:2, Weights(πs_true))
+
+    x = Vector{Int}(undef, 5)
+    for (i,μ) in enumerate(μs_true[k])
+        x[i] = rand(Bernoulli(μ))
+    end
+    X[n] = x
+end
+
+BMEM = BernoulliMixtureEM(X, K)
+
+Random.seed!(1)
+Θ_0 = (fill(1/K, K), fill(rand(5),2))
+
+solve(BMEM, Θ_0)
