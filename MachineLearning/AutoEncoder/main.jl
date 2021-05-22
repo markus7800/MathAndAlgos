@@ -1,7 +1,6 @@
 using Flux
 using Flux.Data.MNIST
 using Base.Iterators: partition
-using Flux.Losses: mse
 using Statistics
 using Plots
 using Random
@@ -42,7 +41,8 @@ mutable struct AutoEncoder
     function AutoEncoder(dim::Int)
         this = new()
         this.encoder = Chain(
-            Dense(784, 200, tanh),
+            Dense(784, 400, tanh),
+            Dense(400, 200, tanh),
             Dense(200, 100, tanh),
             Dense(100, 50, tanh),
             Dense(50, 5*dim, tanh),
@@ -53,7 +53,8 @@ mutable struct AutoEncoder
             Dense(5*dim, 50, tanh),
             Dense(50, 100, tanh),
             Dense(100, 200, tanh),
-            Dense(200, 784, sigmoid)
+            Dense(200, 400, tanh),
+            Dense(400, 784, sigmoid)
         )
 
         return this
@@ -76,7 +77,7 @@ opt = ADAM(0.001)
 
 loss(test_set...)
 
-for epoch in 1:20
+for epoch in 1:25
     Flux.train!(loss, params(ae.encoder, ae.decoder), train_set, opt)
 
     l_train = mean(loss(x[1], x[2]) for x in train_set)
@@ -110,7 +111,7 @@ for label in 0:9
     display(p)
 end
 
-img1 = test_set[1][:,best_encodings[0]]
+img1 = test_set[1][:,best_encodings[2]]
 encoding1 = ae.encoder(img1)
 img2 = test_set[1][:,best_encodings[9]]
 encoding2 = ae.encoder(img2)
@@ -139,15 +140,18 @@ function plot_latent(latent, best_encodings, point=nothing)
         annotate!(x,y,text(string(label)))
     end
     if !isnothing(point)
-        scatter!([point[1]], [point[2]], markercolor=:black, markersize=10, alpha=0.5)
+        scatter!([point[1]], [point[2]], markercolor=:white, markersize=10, alpha=0.5)
     end
 
     return p
 end
+p1 = plot_latent(latent, best_encodings)
+savefig(p1, "latent.png")
 
-img1 = test_set[1][:,best_encodings[1]]
 
-p1 = plot_latent(latent, best_encodings, (0.5,0.5))
+img1 = test_set[1][:,best_encodings[2]]
+
+p1 = plot_latent(latent, best_encodings, ae.encoder(img1))
 p2 = plot_number(img1, color=cgrad([:white, :black]))
 plot(p1, p2)
 
@@ -173,25 +177,65 @@ anim = Animation()
 normal_color = cgrad([:white, :black])
 freeze_color = cgrad([:white, :black])
 
-@progress for (a,b) in seq
+seq2 = [0=>2, 2=>9, 9=>7, 7=>0]
+
+@time @progress for (a,b) in seq
     img1 = test_set[1][:,best_encodings[a]]
     encoding1 = ae.encoder(img1)
     img2 = test_set[1][:,best_encodings[b]]
     encoding2 = ae.encoder(img2)
 
-    # for t in 1:freeze_frames
-    #     p = plot_number(img1, color=freeze_color)
-    #     frame(anim, p)
-    # end
+    p_latent = plot_latent(latent, best_encodings)
+
+    for t in 1:freeze_frames
+        latent_point = ae.encoder(img1)
+        real = ae.decoder(latent_point)
+        p1 = scatter!(deepcopy(p_latent),
+            [latent_point[1]], [latent_point[2]], markercolor=:white, markersize=15, alpha=0.5)
+        #p1 = plot_latent(latent, best_encodings, latent_point)
+
+        p2 = plot_number(real, color=normal_color)
+        p = plot(p1,p2)
+        frame(anim, p)
+    end
 
     for t in LinRange(0, 1, nframes)
         latent_point = encoding1 + t * (encoding2 - encoding1)
         real = ae.decoder(latent_point)
-        p1 = plot_latent(latent, best_encodings, latent_point)
+        p1 = scatter!(deepcopy(p_latent),
+            [latent_point[1]], [latent_point[2]], markercolor=:white, markersize=15, alpha=0.5)
+        #p1 = plot_latent(latent, best_encodings, latent_point)
+
         p2 = plot_number(real, color=normal_color)
         p = plot(p1,p2)
         frame(anim, p)
     end
 end
 
+mp4(anim, "tmp.mp4")
+
 gif(anim, "tmp.gif")
+
+
+train_latent = reduce(hcat, [ae.encoder(x[1]) for x in train_set])
+test_latent = ae.encoder(test_set[1])
+n_test = size(test_latent,2)
+
+k = 20
+pred = zeros(Int, n_test)
+@progress for i in 1:n_test
+    t = test_latent[:,i]
+    ds = sum((train_latent .- t).^2, dims=1)[1,:]
+
+    ds = collect(zip(1:length(ds), ds))
+    sort!(ds, lt=(x,y)->x[2]<y[2])
+
+    counts = zeros(10)
+    for label in train_labels[map(x->x[1], ds[1:k])]
+        counts[label+1] += 1
+    end
+    m, l = findmax(counts)
+    pred[i] = l - 1
+end
+
+count(pred .== test_labels) / n_test * 100
