@@ -16,6 +16,7 @@ Currently implemented:
   - Automatic differentiation
   - ResNet CIFAR10
   - SVMs and demonstration of kernel trick
+  - Autoencoding MNIST
 
 - Optimization
   - Linear Programming (wip)
