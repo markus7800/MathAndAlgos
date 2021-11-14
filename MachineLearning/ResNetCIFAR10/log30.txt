@@ -1,0 +1,222 @@
+[ Info: Load training data.
+[ Info: Normalizing training data.
+[ Info: Constructing Model.
+[ Info: Number of epochs: 30.
+[ Info: Number of batches: 113.
+[ Info: Started training at: 2020/11/24 03:06
+[ Info: Epoch 1
+[ Info:         Randomly permuted 45000 images in 2.75 seconds.
+[ Info:         Epoch finished in 6 minutes.
+[ Info:         Accuracy on train: 0.6203 (80.92 seconds).
+[ Info:         Accuracy on validation: 0.6266 (4.80 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0007
+[ Info: Epoch 2
+[ Info:         Randomly permuted 45000 images in 2.69 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.7010 (33.77 seconds).
+[ Info:         Accuracy on validation: 0.6856 (4.04 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0015
+[ Info: Epoch 3
+[ Info:         Randomly permuted 45000 images in 2.58 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.7128 (38.56 seconds).
+[ Info:         Accuracy on validation: 0.7116 (4.85 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0028
+[ Info: Epoch 4
+[ Info:         Randomly permuted 45000 images in 2.64 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.8053 (35.78 seconds).
+[ Info:         Accuracy on validation: 0.7778 (3.27 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0044
+[ Info: Epoch 5
+[ Info:         Randomly permuted 45000 images in 2.69 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.7631 (32.62 seconds).
+[ Info:         Accuracy on validation: 0.7406 (3.54 seconds).
+[ Info:         Learning rate is at 0.0060
+[ Info: Epoch 6
+[ Info:         Randomly permuted 45000 images in 2.85 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.8055 (39.02 seconds).
+[ Info:         Accuracy on validation: 0.7870 (3.34 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0076
+[ Info: Epoch 7
+[ Info:         Randomly permuted 45000 images in 2.71 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.7868 (33.97 seconds).
+[ Info:         Accuracy on validation: 0.7626 (3.01 seconds).
+[ Info:         Learning rate is at 0.0089
+[ Info: Epoch 8
+[ Info:         Randomly permuted 45000 images in 2.65 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.7399 (32.11 seconds).
+[ Info:         Accuracy on validation: 0.7288 (3.20 seconds).
+[ Info:         Learning rate is at 0.0097
+[ Info: Epoch 9
+[ Info:         Randomly permuted 45000 images in 2.85 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.8058 (63.99 seconds).
+[ Info:         Accuracy on validation: 0.7610 (3.74 seconds).
+[ Info:         Learning rate is at 0.0100
+[ Info: Epoch 10
+[ Info:         Randomly permuted 45000 images in 3.26 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.8567 (61.65 seconds).
+[ Info:         Accuracy on validation: 0.8184 (2.68 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0099
+[ Info: Epoch 11
+[ Info:         Randomly permuted 45000 images in 2.66 seconds.
+[ Info:         Epoch finished in 4 minutes.
+[ Info:         Accuracy on train: 0.8274 (84.39 seconds).
+[ Info:         Accuracy on validation: 0.7970 (11.61 seconds).
+[ Info:         Learning rate is at 0.0098
+[ Info: Epoch 12
+[ Info:         Randomly permuted 45000 images in 3.29 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.7845 (30.28 seconds).
+[ Info:         Accuracy on validation: 0.7514 (3.42 seconds).
+[ Info:         Learning rate is at 0.0095
+[ Info: Epoch 13
+[ Info:         Randomly permuted 45000 images in 3.11 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.7517 (32.66 seconds).
+[ Info:         Accuracy on validation: 0.7182 (3.45 seconds).
+[ Info:         Learning rate is at 0.0091
+[ Info: Epoch 14
+[ Info:         Randomly permuted 45000 images in 2.80 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.8657 (92.28 seconds).
+[ Info:         Accuracy on validation: 0.8218 (13.86 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0087
+[ Info: Epoch 15
+[ Info:         Randomly permuted 45000 images in 2.94 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.8381 (40.96 seconds).
+[ Info:         Accuracy on validation: 0.8008 (4.60 seconds).
+[ Info:         Learning rate is at 0.0081
+[ Info: Epoch 16
+[ Info:         Randomly permuted 45000 images in 2.93 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.8559 (86.62 seconds).
+[ Info:         Accuracy on validation: 0.8130 (11.04 seconds).
+[ Info:         Learning rate is at 0.0075
+[ Info: Epoch 17
+[ Info:         Randomly permuted 45000 images in 3.10 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.9077 (36.38 seconds).
+[ Info:         Accuracy on validation: 0.8584 (3.45 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0068
+[ Info: Epoch 18
+[ Info:         Randomly permuted 45000 images in 2.75 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.8988 (41.14 seconds).
+[ Info:         Accuracy on validation: 0.8464 (6.46 seconds).
+[ Info:         Learning rate is at 0.0061
+[ Info: Epoch 19
+[ Info:         Randomly permuted 45000 images in 3.12 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.9259 (69.88 seconds).
+[ Info:         Accuracy on validation: 0.8670 (11.70 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0054
+[ Info: Epoch 20
+[ Info:         Randomly permuted 45000 images in 2.67 seconds.
+[ Info:         Epoch finished in 4 minutes.
+[ Info:         Accuracy on train: 0.9318 (35.07 seconds).
+[ Info:         Accuracy on validation: 0.8694 (3.41 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0046
+[ Info: Epoch 21
+[ Info:         Randomly permuted 45000 images in 2.61 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.9209 (46.17 seconds).
+[ Info:         Accuracy on validation: 0.8664 (4.66 seconds).
+[ Info:         Learning rate is at 0.0039
+[ Info: Epoch 22
+[ Info:         Randomly permuted 45000 images in 3.06 seconds.
+[ Info:         Epoch finished in 4 minutes.
+[ Info:         Accuracy on train: 0.8742 (46.39 seconds).
+[ Info:         Accuracy on validation: 0.8284 (4.12 seconds).
+[ Info:         Learning rate is at 0.0032
+[ Info: Epoch 23
+[ Info:         Randomly permuted 45000 images in 3.03 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.9652 (39.72 seconds).
+[ Info:         Accuracy on validation: 0.8916 (4.24 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0025
+[ Info: Epoch 24
+[ Info:         Randomly permuted 45000 images in 2.75 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.9837 (41.33 seconds).
+[ Info:         Accuracy on validation: 0.9122 (4.35 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0019
+[ Info: Epoch 25
+[ Info:         Randomly permuted 45000 images in 2.87 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.9908 (44.21 seconds).
+[ Info:         Accuracy on validation: 0.9174 (4.05 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0013
+[ Info: Epoch 26
+[ Info:         Randomly permuted 45000 images in 2.60 seconds.
+[ Info:         Epoch finished in 3 minutes.
+[ Info:         Accuracy on train: 0.9978 (47.50 seconds).
+[ Info:         Accuracy on validation: 0.9248 (5.43 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0009
+[ Info: Epoch 27
+[ Info:         Randomly permuted 45000 images in 2.63 seconds.
+[ Info:         Epoch finished in 5 minutes.
+[ Info:         Accuracy on train: 0.9979 (126.28 seconds).
+[ Info:         Accuracy on validation: 0.9264 (7.70 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0005
+[ Info: Epoch 28
+[ Info:         Randomly permuted 45000 images in 2.90 seconds.
+[ Info:         Epoch finished in 5 minutes.
+[ Info:         Accuracy on train: 0.9994 (75.15 seconds).
+[ Info:         Accuracy on validation: 0.9298 (9.41 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0002
+[ Info: Epoch 29
+[ Info:         Randomly permuted 45000 images in 2.88 seconds.
+[ Info:         Epoch finished in 5 minutes.
+[ Info:         Accuracy on train: 0.9982 (84.54 seconds).
+[ Info:         Accuracy on validation: 0.9330 (6.61 seconds).
+[ Info:         Best accuracy reaced. Model saved.
+[ Info:         Learning rate is at 0.0001
+[ Info: Epoch 30
+[ Info:         Randomly permuted 45000 images in 2.84 seconds.
+[ Info:         Epoch finished in 5 minutes.
+[ Info:         Accuracy on train: 0.9941 (73.24 seconds).
+[ Info:         Accuracy on validation: 0.9330 (16.99 seconds).
+[ Info:         Learning rate is at 0.0000
+[ Info: Finished training at: 2020/11/24 05:25
+[ Info: Test data loaded.
+[ Info: Accuracy 0.9274 evaluated in 5.0156057 seconds.
+  8.833256 seconds (2.53 M allocations: 829.000 MiB, 2.28% gc time)
+[ Info: Test data loaded.
+[ Info: Accuracy 0.9268 evaluated in 4.783722201 seconds.
+  7.644758 seconds (2.16 M allocations: 810.621 MiB, 2.37% gc time)
+
+  print(acc_trains)
+Any[0.6203333333333333, 0.7010222222222222, 0.7127555555555556, 0.8053333333333333, 0.7631333333333333,
+ 0.8054888888888889, 0.7867555555555555, 0.7399333333333333, 0.8057777777777778, 0.8567111111111111,
+ 0.8274444444444444, 0.7844888888888889, 0.7516666666666667, 0.8656888888888888, 0.8381111111111111,
+ 0.8558888888888889, 0.9077333333333333, 0.8987777777777778, 0.9259111111111111, 0.9317555555555556,
+ 0.9208666666666666, 0.8742, 0.9651555555555555, 0.9836888888888888, 0.9908,
+ 0.9977777777777778, 0.9979111111111111, 0.9993777777777778, 0.9982, 0.9940888888888889]
+print(acc_vals)
+Any[0.6266, 0.6856, 0.7116, 0.7778, 0.7406, 0.787, 0.7626, 0.7288, 0.761, 0.8184,
+  0.797, 0.7514, 0.7182, 0.8218, 0.8008, 0.813, 0.8584, 0.8464, 0.867, 0.8694,
+  0.8664, 0.8284, 0.8916, 0.9122, 0.9174, 0.9248, 0.9264, 0.9298, 0.933, 0.933]
