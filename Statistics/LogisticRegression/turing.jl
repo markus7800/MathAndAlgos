@@ -17,19 +17,19 @@ using StatsPlots
     x ~ Normal(m, sqrt(s²))
     y ~ Normal(m, sqrt(s²))
     return x, y
-end
+end;
 
 # passing 'missing' to the model leaves the parameters unconditioned
-unconditioned = gdemo(missing, missing)
+unconditioned = gdemo(missing, missing);
 # get a sample
 unconditioned()
 
 
 # Let's condition the model on x = 1.5 and y = 2
-conditioned = gdemo(1.5, 2)
+conditioned = gdemo(1.5, 2);
 
 # Use Sequential Monte Carlo (SMC) to infer s and m
-chain = sample(conditioned, SMC(), 10_000)
+chain = sample(conditioned, SMC(), 10_000);
 
 # get summary statistics
 describe(chain)
@@ -60,24 +60,28 @@ plot(chain)
 
 # generate syntetic data set
 using Random
-Random.seed!(0)
-N = 1000
-x1 = rand(N) .* 2 .- 1
-x2 = rand(N) .* 2 .- 1
-ϵ = rand(Normal(0, 0.25), N)
+Random.seed!(0);
+N = 1000;
+x1 = rand(N) .* 2 .- 1;
+x2 = rand(N) .* 2 .- 1;
+ϵ = rand(Normal(0, 0.25), N);
 
-x = hcat(x1,x2)
-y = @. Int(x1^2 + 2 * x2^2 + ϵ < 0.75)
+x = hcat(x1,x2);
+y = @. Int(x1^2 + 2 * x2^2 + ϵ < 0.75);
 
-scatter(x1, x2, mc = y.+1, legend=false, aspect_ratio=:equal, xlim=(-1,1), ylim=(-1,1))
+scatter(x1, x2, mc = y.+1,
+    legend=false, aspect_ratio=:equal,
+    xlim=(-1,1), ylim=(-1,1), alpha=0.5)
 
 
+# logistic sigmoid
+σ(t) = 1 / (1 + exp(-t))
 
 # define model
-σ(t) = 1 / (1 + exp(-t))
 
 # gaussian priors
 @model function logreg_gauss(x, y, μ, Σ)
+    # multinormal prior
     w ~ MvNormal(μ, Σ)
 
     nrow, ncol = size(x)
@@ -88,12 +92,13 @@ scatter(x1, x2, mc = y.+1, legend=false, aspect_ratio=:equal, xlim=(-1,1), ylim=
     end
 
     return y
-end
+end;
 
 # dependent uniform priors
 @model function logreg_unif(x, y)
+    # more complicated uniform prior
     w1 ~ Uniform(-10, 0)
-    w2 ~ Uniform(w1, 1)
+    w2 ~ Uniform(w1, 1) # w1 ≤ w2 ≤ 1
     w3 ~ Normal(0, 10)
 
     nrow, ncol = size(x)
@@ -104,23 +109,24 @@ end
     end
 
     return y
-end
+end;
 
 
 # inference step
 using LinearAlgebra
-μ = fill(0., 3)
-Σ = 10 * Matrix{Float64}(I(3)) # board prior
+μ = fill(0., 3);
+Σ = 10 * Matrix{Float64}(I(3)); # board prior
 
-m = logreg_gauss(x, y, μ, Σ)
-chain_gauss = sample(m, HMC(0.05, 10), 10_000)
+m = logreg_gauss(x, y, μ, Σ);
+# Hamiltion Monte Carlo
+chain_gauss = sample(m, HMC(0.05, 10), 10_000);
 
 describe(chain_gauss)
 
 plot(chain_gauss)
 
-m = logreg_unif(x, y)
-chain_unif = sample(m, HMC(0.05, 10), 10_000)
+m = logreg_unif(x, y);
+chain_unif = sample(m, HMC(0.05, 10), 10_000);
 
 describe(chain_unif)
 
@@ -136,21 +142,22 @@ function MAP_prediction(x, chain, threshold)
     for i in 1:nrow
         p = σ(w[1] * x[i,1]^2 + w[2] * x[i,2]^2 + w[3])
 
-        ŷ[i] = p ≥ threshold ? 1 : 0
+        ŷ[i] = p ≥ threshold ? 1 : 0 # make prediction with threshold
     end
 
     return ŷ
-end
+end;
 
-chain = chain_gauss
+chain = chain_gauss;
+# chain = chain_unif;
 
 # find best threshold
-thresholds = LinRange(0, 1, 101)
-accuracies = Float64[]
+thresholds = LinRange(0, 1, 101);
+accuracies = Float64[];
 for threshold in thresholds
     ŷ = MAP_prediction(x, chain, threshold)
     push!(accuracies, mean(ŷ .== y))
-end
+end;
 
 best_treshold = thresholds[argmax(accuracies)]
 
@@ -161,7 +168,7 @@ function bernoulli_prob(x, chain)
     w = [mean(chain, param) for param in chain.name_map[:parameters]] # mean ≈ MAP
     p = σ(w[1] * x[1]^2 + w[2] * x[2]^2 + w[3])
     return p
-end
+end;
 scatter(x1, x2, mc = y.+1, legend=false, alpha=0.3, aspect_ratio=:equal, xlim=(-1,1), ylim=(-1,1));
 contour!(
     LinRange(-1,1,201),
