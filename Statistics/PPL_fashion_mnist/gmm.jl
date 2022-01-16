@@ -22,7 +22,7 @@ using Turing, MCMCChains
 
 # Turn off the progress monitor.
 Turing.setprogress!(false);
-Turing.setadbackend(:reversediff)
+# Turing.setadbackend(:reversediff)
 
 @model function GaussianMixtureModel(x, counter)
     counter[1] += 1
@@ -49,7 +49,7 @@ Turing.setadbackend(:reversediff)
     # Draw assignments for each datum and generate it from a multivariate normal.
     k = Vector{Int}(undef, N)
     for i in 1:N
-        k[i] ~ Categorical(w)
+        k[i] = (30 < N) + 1 #~ Categorical(w)
         x[:,i] ~ MvNormal([μ[k[i]], μ[k[i]]], 1.)
     end
     return k
@@ -59,8 +59,12 @@ counter = Int[0]
 gmm_model = GaussianMixtureModel(x, counter);
 
 gmm_sampler = Gibbs(PG(100, :k), HMC(0.05, 10, :μ1, :μ2))
+# gmm_sampler = Gibbs(PG(100, :k), NUTS(-1, 0.65, :μ1, :μ2))
+
 tchain = sample(gmm_model, gmm_sampler, 100);
 # tchain = sample(gmm_model, gmm_sampler, MCMCThreads(), 100, 3);
+tchain = sample(gmm_model, HMC(0.05, 10), 100);
+
 
 ids = findall(map(name -> occursin("μ", string(name)), names(tchain)));
 p = plot(tchain[:, ids, :]; legend=true, labels=["Mu 1" "Mu 2"], colordim=:parameter)

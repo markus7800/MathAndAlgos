@@ -17,7 +17,7 @@ using StatsPlots
     x ~ Normal(m, sqrt(s²))
     y ~ Normal(m, sqrt(s²))
     return x, y
-end;
+end
 
 # passing 'missing' to the model leaves the parameters unconditioned
 unconditioned = gdemo(missing, missing);

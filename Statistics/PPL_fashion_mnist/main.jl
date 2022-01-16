@@ -92,3 +92,20 @@ tchain = sample(gmm_model_1, gmm_sampler, 10)
 # for k in 1:num_classes
 #     println((k-1)*D+1, ":", (k)*D, " = ", a[(k-1)*D+1:k*D])
 # end
+
+using GaussianMixtures
+
+Random.seed!(0)
+(small_train_x, small_train_y), = stratifiedobs((train_x, train_y), p=0.05)
+
+x = Float64.(reshape(train_x, 28*28, :)')
+
+gmm = GMM(2, Matrix(x'), kind=:diag)
+
+using LinearAlgebra
+
+isposdef(x)
+
+for i in 1:10
+    display(FashionMNIST.convert2image(gmm.μ[i,:]))
+end
