@@ -114,3 +114,63 @@ choices[:mu1], choices[:mu2]
 μs
 
 categorical([0.5,0.5])
+
+
+using Gen
+@gen function disc_model(x::Float64)
+    @param a::Float64
+    @param b::Float64
+    @trace(normal(a * x + b, 1.), :y)
+end
+
+init_param!(disc_model, :a, 1.)
+init_param!(disc_model, :b, 0.)
+
+disc_model(1.)
+
+@gen function disc_model_2(x::Float64)
+    @param w::Vector{Float64}
+    @trace(normal(w[1] * x + w[2], 1.), :y)
+end
+
+init_param!(disc_model_2, :w, [1.,0.])
+disc_model_2(1.)
+
+using Flux
+using LinearAlgebra
+
+@gen function disc_model_3(x::Vector{Float32})
+    @param W::Matrix{Float32}
+    @param b::Vector{Float32}
+    n = length(b)
+    d = Dense(W, b, sigmoid)
+    display(W)
+    display(b)
+
+    @trace(mvnormal(d(x), 1. * I(n)), :y)
+end
+
+using Random
+Random.seed!(0)
+n = 5
+d = Dense(n, n)
+
+init_param!(disc_model_3, :W, d.weight)
+init_param!(disc_model_3, :b, d.bias)
+
+disc_model_3(ones(Float32, n))
+
+d = Dense(5, 5, sigmoid)
+d.weight
+d.
+Dense()
+
+
+
+model = Chain(Dense(5, 10, sigmoid), Dense(10, 5, sigmoid))
+
+ps = params(model)
+
+typeof(ps)
+
+ps.params.dict
