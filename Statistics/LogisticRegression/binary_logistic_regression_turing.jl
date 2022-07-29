@@ -1,4 +1,6 @@
-
+# import Pkg
+# Pkg.add("Turing")
+# Pkg.add("StatsPlots")
 
 using Turing
 using StatsPlots
@@ -11,7 +13,7 @@ using StatsPlots
 # Models are definded with the @model macro and ~ syntax.
 # The arguments of a model are used to condition the model.
 # Use @macroexpand1 (before @model) to inspect generated code.
-@model function gdemo(x, y)
+@model function demo(x, y)
     s² ~ InverseGamma(2, 3)
     m ~ Normal(0, sqrt(s²))
     x ~ Normal(m, sqrt(s²))
@@ -20,13 +22,13 @@ using StatsPlots
 end
 
 # passing 'missing' to the model leaves the parameters unconditioned
-unconditioned = gdemo(missing, missing);
+unconditioned = demo(missing, missing);
 # get a sample
 unconditioned()
 
 
 # Let's condition the model on x = 1.5 and y = 2
-conditioned = gdemo(1.5, 2);
+conditioned = demo(1.5, 2);
 
 # Use Sequential Monte Carlo (SMC) to infer s and m
 chain = sample(conditioned, SMC(), 10_000);
@@ -69,13 +71,15 @@ x2 = rand(N) .* 2 .- 1;
 x = hcat(x1,x2);
 y = @. Int(x1^2 + 2 * x2^2 + ϵ < 0.75);
 
-scatter(x1, x2, mc = y.+1,
+p = scatter(x1, x2, mc = y.+1,
     legend=false, aspect_ratio=:equal,
-    xlim=(-1,1), ylim=(-1,1), alpha=0.5)
+    xlim=(-1,1), ylim=(-1,1), alpha=0.5);
+display(p)
 
 
 # logistic sigmoid
 σ(t) = 1 / (1 + exp(-t))
+
 
 # define model
 
@@ -97,6 +101,7 @@ end;
 # dependent uniform priors
 @model function logreg_unif(x, y)
     # more complicated uniform prior
+    # introduces constraint such that ellipse should be taller than wider
     w1 ~ Uniform(-10, 0)
     w2 ~ Uniform(w1, 1) # w1 ≤ w2 ≤ 1
     w3 ~ Normal(0, 10)
@@ -115,7 +120,7 @@ end;
 # inference step
 using LinearAlgebra
 μ = fill(0., 3);
-Σ = 10 * Matrix{Float64}(I(3)); # board prior
+Σ = 10 * Matrix{Float64}(I(3)); # broad prior
 
 m = logreg_gauss(x, y, μ, Σ);
 # Hamiltion Monte Carlo
@@ -123,14 +128,17 @@ chain_gauss = sample(m, HMC(0.05, 10), 10_000);
 
 describe(chain_gauss)
 
-plot(chain_gauss)
+p = plot(chain_gauss);
+display(p)
 
 m = logreg_unif(x, y);
 chain_unif = sample(m, HMC(0.05, 10), 10_000);
 
 describe(chain_unif)
 
-plot(chain_unif)
+p = plot(chain_unif);
+display(p)
+
 
 # make predictions
 function MAP_prediction(x, chain, threshold)
@@ -148,30 +156,31 @@ function MAP_prediction(x, chain, threshold)
     return ŷ
 end;
 
-chain = chain_gauss;
-# chain = chain_unif;
+for (name, chain) in [("broad gaussian prior", chain_gauss), ("constrained uniform prior", chain_unif)]
 
-# find best threshold
-thresholds = LinRange(0, 1, 101);
-accuracies = Float64[];
-for threshold in thresholds
-    ŷ = MAP_prediction(x, chain, threshold)
-    push!(accuracies, mean(ŷ .== y))
-end;
+    #  find best threshold
+    thresholds = LinRange(0, 1, 101);
+    accuracies = Float64[];
+    for threshold in thresholds
+        ŷ = MAP_prediction(x, chain, threshold)
+        push!(accuracies, mean(ŷ .== y))
+    end;
 
-best_treshold = thresholds[argmax(accuracies)]
+    best_treshold = thresholds[argmax(accuracies)]
 
-plot(thresholds, accuracies, legend=false, xlabel="threshold", ylabel="accuarcy", ylim=(0,1))
+    plt = plot(thresholds, accuracies, legend=false, xlabel="threshold", ylabel="accuarcy", ylim=(0,1), title=name);
+    display(plt)
 
-
-function bernoulli_prob(x, chain)
-    w = [mean(chain, param) for param in chain.name_map[:parameters]] # mean ≈ MAP
-    p = σ(w[1] * x[1]^2 + w[2] * x[2]^2 + w[3])
-    return p
-end;
-scatter(x1, x2, mc = y.+1, legend=false, alpha=0.3, aspect_ratio=:equal, xlim=(-1,1), ylim=(-1,1));
-contour!(
-    LinRange(-1,1,201),
-    LinRange(-1,1,201),
-    (x1, x2) -> bernoulli_prob([x1,x2], chain),
-    levels=[best_treshold])
+    function bernoulli_prob(x, chain)
+        w = [mean(chain, param) for param in chain.name_map[:parameters]] # mean ≈ MAP
+        p = σ(w[1] * x[1]^2 + w[2] * x[2]^2 + w[3])
+        return p
+    end;
+    plt = scatter(x1, x2, mc = y.+1, legend=false, alpha=0.3, aspect_ratio=:equal, xlim=(-1,1), ylim=(-1,1), title=name);
+    contour!(
+        LinRange(-1,1,201),
+        LinRange(-1,1,201),
+        (x1, x2) -> bernoulli_prob([x1,x2], chain),
+        levels=[best_treshold]);
+    display(plt)
+end
