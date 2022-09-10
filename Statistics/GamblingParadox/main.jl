@@ -1,7 +1,7 @@
 
 
 function advantage(d::Int=10; a0=missing, b0=missing)
-    # numbers chose by player 1
+    # numbers chosen by player 1
     if !ismissing(a0) && !ismissing(b0)
         a = a0
         b = b0
@@ -30,7 +30,7 @@ end
 
 
 function no_advantage(d::Int=10; a0=missing, b0=missing)
-    # numbers chose by player 1
+    # numbers chosen by player 1
     if !ismissing(a0) && !ismissing(b0)
         a = a0
         b = b0
@@ -39,7 +39,7 @@ function no_advantage(d::Int=10; a0=missing, b0=missing)
         b = rand() * d
     end
 
-    # x is chosen by player 1 -> always same order
+    # x is chosen by player 1
     if d - min(a,b) < max(a,b)
         x, y = (min(a,b), max(a,b)) # less probable that z is bigger than min
     else
@@ -71,3 +71,29 @@ sum(no_advantage(a0=1,b0=2) for i in 1:N) / N
 
 sum(advantage(a0=4,b0=6) for i in 1:N) / N
 sum(no_advantage(a0=4,b0=6) for i in 1:N) / N
+
+sum(advantage(a0=5,b0=7) for i in 1:N) / N
+sum(no_advantage(a0=5,b0=7) for i in 1:N) / N
+
+using Random
+begin
+    Random.seed!(0)
+    N = 1_000_000
+    d = 10
+    steps = 0:0.1:1.0
+    scores = zeros(Int, length(steps))
+    for (i, p) in enumerate(steps), _ in 1:N
+        a = rand()*d
+        b = rand()*d
+        if rand() < p
+            a0 = min(a,b)
+            b0 = max(a,b)
+        else
+            a0 = max(a,b)
+            b0 = min(a,b)
+        end
+
+        scores[i] += advantage(d, a0=a0, b0=b0)
+    end
+    return collect(zip(steps, scores./N))
+end
